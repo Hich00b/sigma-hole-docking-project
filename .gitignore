@@ -79,3 +79,9 @@ output/
 MO-1-SHD.sdf
 test_debug.sdf
 test_input.csv
+sigma_hole_pipeline.log
+test_pipeline.py
+input.csv
+ligands/MO-1-SHD_ligand.pdbqt
+sigma_hole_work/charged_compounds.csv
+receptors/receptor_receptor.pdbqt
