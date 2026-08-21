@@ -133,4 +133,4 @@ MIT License - see original repository for details.
 
 ## Questions/Collaboration?
 
-Contact: [Dr. Bensaada Hichem](https://dr-bensaada.pages.dev)
+Contact: [Dr. Bensaada Hichem](http://bensaada.qzz.io/)
