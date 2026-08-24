@@ -85,3 +85,4 @@ input.csv
 ligands/MO-1-SHD_ligand.pdbqt
 sigma_hole_work/charged_compounds.csv
 receptors/receptor_receptor.pdbqt
+sigma_hole_docking_plan.md

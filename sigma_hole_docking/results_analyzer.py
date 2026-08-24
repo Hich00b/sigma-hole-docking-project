@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import os
+from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
 
@@ -445,34 +446,13 @@ class SigmaHoleResultsAnalyzer:
     def _parse_pdbqt_detailed(self, pdbqt_path: str) -> List[Dict]:
         """
         Parse PDBQT file to extract detailed atom information.
+        Uses the shared PDBQT I/O module.
 
         Returns:
             List of dictionaries with atomic details
         """
-        atoms = []
-
-        try:
-            with open(pdbqt_path, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith('ATOM') or line.startswith('HETATM'):
-                        parts = line.split()
-                        if len(parts) >= 10:
-                            try:
-                                atom_data = {
-                                    'index': int(parts[1]),
-                                    'element': parts[2],
-                                    'x': float(parts[6]),
-                                    'y': float(parts[7]),
-                                    'z': float(parts[8]),
-                                    'charge': float(parts[10]) if len(parts) > 10 else 0.0
-                                }
-                                atoms.append(atom_data)
-                            except (ValueError, IndexError):
-                                continue
-        except Exception as e:
-            logger.error(f"Error parsing PDBQT {pdbqt_path}: {e}")
-
+        # Use shared parsing function
+        atoms = pdbqt_io.parse_pdbqt_detailed(pdbqt_path)
         return atoms
 
     def generate_ranking_report(self, df: Optional[pd.DataFrame] = None,
@@ -568,7 +548,7 @@ class SigmaHoleResultsAnalyzer:
         Returns:
             Dictionary with comparison results
         """
-        from docking_engine import SigmaHoleDockingEngine
+        from .docking_engine import SigmaHoleDockingEngine
 
         engine = SigmaHoleDockingEngine(use_physics_fallback=True)
 
@@ -591,8 +571,8 @@ class SigmaHoleResultsAnalyzer:
             ligand_file = f"ligands/{row['compound_id']}_ligand.pdbqt"
             if os.path.exists(ligand_file):
                 try:
-                    physics_score = engine.calculate_physics_score(ligand_file, receptor_pdbqt)
-                    physics_scores.append(physics_score)
+                    physics_score, ok = engine.calculate_physics_score(ligand_file, receptor_pdbqt)
+                    physics_scores.append(physics_score if ok else np.nan)
                 except Exception as e:
                     logger.debug(f"Error calculating physics score for {row['compound_id']}: {e}")
                     physics_scores.append(np.nan)
@@ -648,7 +628,7 @@ class SigmaHoleResultsAnalyzer:
             List of paths to created visualization files
         """
         try:
-            from interaction_visualizer import create_visualizer_for_top_hits, SigmaHoleInteractionVisualizer
+            from .interaction_visualizer import create_visualizer_for_top_hits, SigmaHoleInteractionVisualizer
         except ImportError as e:
             logger.warning(f"Could not import interaction visualizer: {e}")
             logger.warning("3D visualization will be skipped. Install py3Dmol for this feature.")

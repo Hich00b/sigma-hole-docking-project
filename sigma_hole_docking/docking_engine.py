@@ -13,6 +13,7 @@ import subprocess
 import os
 import tempfile
 import math
+from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
 
@@ -209,44 +210,37 @@ class SigmaHoleDockingEngine:
 
         return (epsilon, sigma)
 
-    def _find_halogen_and_carbon(self, ligand_atoms: List[Dict]) -> Tuple[Optional[Dict], Optional[Dict]]:
+    def _find_halogen_and_carbon(self, ligand_atoms: List[Dict]) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
         """
-        Find halogen atom and the carbon bonded to it in ligand.
+        Find halogen atoms and the carbons bonded to them in ligand.
 
         Returns:
-            Tuple of (halogen_atom, carbon_atom) where:
-            - halogen_atom: Dict with halogen info (F, Cl, Br, I)
-            - carbon_atom: Dict of carbon bonded to halogen, or None if not found
+            List of tuples (halogen_atom, carbon_atom) where:
+                - halogen_atom: Dict with halogen info (F, Cl, Br, I, At)
+                - carbon_atom: Dict of carbon bonded to halogen, or None if not found
         """
-        halogen_atom = None
-        carbon_atoms = [atom for atom in ligand_atoms if atom['element'] == 'C']
-
-        # Find halogen
+        pairs = []
+        carbon_atoms = [atom for atom in ligand_atoms if atom["element"] == "C"]
         for atom in ligand_atoms:
-            if atom['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+            if atom["element"] in ["F", "Cl", "Br", "I", "At"]:
                 halogen_atom = atom
-                break
-
-        if not halogen_atom:
-            return None, None
-
-        # Find closest carbon to halogen (assumed to be bonded)
-        if carbon_atoms:
-            min_dist = float('inf')
-            closest_carbon = None
-            for carbon in carbon_atoms:
-                dist = np.sqrt(
-                    (halogen_atom['x'] - carbon['x'])**2 +
-                    (halogen_atom['y'] - carbon['y'])**2 +
-                    (halogen_atom['z'] - carbon['z'])**2
-                )
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_carbon = carbon
-            return halogen_atom, closest_carbon
-
-        return halogen_atom, None
-
+                # Find closest carbon to halogen (assumed to be bonded)
+                if carbon_atoms:
+                    min_dist = float("inf")
+                    closest_carbon = None
+                    for carbon in carbon_atoms:
+                        dist = np.sqrt(
+                            (halogen_atom["x"] - carbon["x"])**2 +
+                            (halogen_atom["y"] - carbon["y"])**2 +
+                            (halogen_atom["z"] - carbon["z"])**2
+                        )
+                        if dist < min_dist:
+                            min_dist = dist
+                            closest_carbon = carbon
+                    pairs.append((halogen_atom, closest_carbon))
+                else:
+                    pairs.append((halogen_atom, None))
+        return pairs
     def _is_planar_molecule(self, atoms: List[Dict], tolerance: float = 0.01) -> bool:
         """
         Check if a molecule is planar (all atoms lie in the same plane within tolerance).
@@ -358,18 +352,77 @@ class SigmaHoleDockingEngine:
             logger.warning("Receptor appears planar (Z variance < 0.01 Å), adding small random Z-offset to prevent alignment singularities")
             receptor_atoms = self._add_planar_offset(receptor_atoms, max_offset=0.01)
 
-        # Find key atoms
-        halogen_atom, carbon_atom = self._find_halogen_and_carbon(ligand_atoms)
+        # Find key atoms - handle multiple halogens
+        halogen_carbon_pairs = self._find_halogen_and_carbon(ligand_atoms)
         acceptor_atoms = self._find_acceptor_atoms(receptor_atoms)
 
-        if not halogen_atom or not acceptor_atoms:
-            logger.warning("Could not find halogen or acceptor atoms for alignment")
+        if not acceptor_atoms:
+            logger.warning("Could not find acceptor atoms for alignment")
             # Restore original receptor atoms if we made a copy
             if receptor_atoms is not original_receptor_atoms:
                 receptor_atoms = original_receptor_atoms
             return ligand_atoms
 
-        if not carbon_atom:
+        # Filter out pairs where halogen is None (shouldn't happen based on implementation, but safe)
+        valid_pairs = [(h, c) for h, c in halogen_carbon_pairs if h is not None]
+        if not valid_pairs:
+            logger.warning("Could not find halogen atoms for alignment")
+            # Restore original receptor atoms if we made a copy
+            if receptor_atoms is not original_receptor_atoms:
+                receptor_atoms = original_receptor_atoms
+            return ligand_atoms
+
+        # Separate pairs with and without carbon
+        pairs_with_carbon = [(h, c) for h, c in valid_pairs if c is not None]
+        pairs_without_carbon = [(h, c) for h, c in valid_pairs if c is None]
+
+        # Select best halogen-carbon pair based on distance to acceptor
+        if pairs_with_carbon:
+            # Find the halogen-carbon pair where halogen is closest to any acceptor
+            best_pair = None
+            min_halogen_to_acceptor_dist = float('inf')
+
+            for halogen_atom, carbon_atom in pairs_with_carbon:
+                # Find distance from this halogen to closest acceptor
+                min_dist = float('inf')
+                for acceptor in acceptor_atoms:
+                    dist = np.sqrt(
+                        (halogen_atom['x'] - acceptor['x'])**2 +
+                        (halogen_atom['y'] - acceptor['y'])**2 +
+                        (halogen_atom['z'] - acceptor['z'])**2
+                    )
+                    if dist < min_dist:
+                        min_dist = dist
+
+                if min_dist < min_halogen_to_acceptor_dist:
+                    min_halogen_to_acceptor_dist = min_dist
+                    best_pair = (halogen_atom, carbon_atom)
+
+            halogen_atom, carbon_atom = best_pair
+
+        elif pairs_without_carbon:
+            # Fallback: use halogen without carbon (closest to acceptor)
+            best_pair = None
+            min_halogen_to_acceptor_dist = float('inf')
+
+            for halogen_atom, carbon_atom in pairs_without_carbon:
+                # Find distance from this halogen to closest acceptor
+                min_dist = float('inf')
+                for acceptor in acceptor_atoms:
+                    dist = np.sqrt(
+                        (halogen_atom['x'] - acceptor['x'])**2 +
+                        (halogen_atom['y'] - acceptor['y'])**2 +
+                        (halogen_atom['z'] - acceptor['z'])**2
+                    )
+                    if dist < min_dist:
+                        min_dist = dist
+
+                if min_dist < min_halogen_to_acceptor_dist:
+                    min_halogen_to_acceptor_dist = min_dist
+                    best_pair = (halogen_atom, carbon_atom)
+
+            halogen_atom, carbon_atom = best_pair
+
             logger.warning("Could not find carbon bonded to halogen for alignment")
             # Still try to align using just halogen position
             result = self._align_by_halogen_only(ligand_atoms, receptor_atoms, halogen_atom, acceptor_atoms)
@@ -377,6 +430,14 @@ class SigmaHoleDockingEngine:
             if receptor_atoms is not original_receptor_atoms:
                 receptor_atoms = original_receptor_atoms
             return result
+
+        else:
+            # No valid pairs (should not happen due to earlier checks, but safe)
+            logger.warning("Could not find halogen or acceptor atoms for alignment")
+            # Restore original receptor atoms if we made a copy
+            if receptor_atoms is not original_receptor_atoms:
+                receptor_atoms = original_receptor_atoms
+            return ligand_atoms
 
         # Find closest acceptor atom to halogen
         min_dist = float('inf')
@@ -692,12 +753,55 @@ class SigmaHoleDockingEngine:
         best_atoms = copy.deepcopy(ligand_atoms)
         best_energy = self._calculate_pairwise_energy(best_atoms, receptor_atoms)
 
-        # Find key atoms for defining the optimization axes
-        halogen_atom, carbon_atom = self._find_halogen_and_carbon(best_atoms)
+        # Find key atoms for defining the optimization axes - handle multiple halogens
+        halogen_carbon_pairs = self._find_halogen_and_carbon(best_atoms)
         acceptor_oxygens = self._find_acceptor_atoms(receptor_atoms)
 
-        if not halogen_atom or not acceptor_oxygens or not carbon_atom:
-            # Can't optimize without the key atoms, return original
+        if not acceptor_oxygens:
+            # Can't optimize without acceptor atoms
+            return best_atoms
+
+        # Filter out pairs where halogen is None (shouldn't happen based on implementation, but safe)
+        valid_pairs = [(h, c) for h, c in halogen_carbon_pairs if h is not None]
+        if not valid_pairs:
+            # Can't optimize without halogen atoms
+            return best_atoms
+
+        # Separate pairs with and without carbon
+        pairs_with_carbon = [(h, c) for h, c in valid_pairs if c is not None]
+        pairs_without_carbon = [(h, c) for h, c in valid_pairs if c is None]
+
+        # Select best halogen-carbon pair based on distance to oxygen
+        if pairs_with_carbon:
+            # Find the halogen-carbon pair where halogen is closest to any oxygen
+            best_pair = None
+            min_halogen_to_oxygen_dist = float('inf')
+
+            for halogen_atom, carbon_atom in pairs_with_carbon:
+                # Find distance from this halogen to closest oxygen
+                min_dist = float('inf')
+                for oxygen in acceptor_oxygens:
+                    dist = np.sqrt(
+                        (halogen_atom['x'] - oxygen['x'])**2 +
+                        (halogen_atom['y'] - oxygen['y'])**2 +
+                        (halogen_atom['z'] - oxygen['z'])**2
+                    )
+                    if dist < min_dist:
+                        min_dist = dist
+
+                if min_dist < min_halogen_to_oxygen_dist:
+                    min_halogen_to_oxygen_dist = min_dist
+                    best_pair = (halogen_atom, carbon_atom)
+
+            halogen_atom, carbon_atom = best_pair
+
+        elif pairs_without_carbon:
+            # Fallback: consider halogens without carbon, but we can't optimize without carbon
+            # (need carbon to define C-X bond axis for optimization)
+            return best_atoms
+
+        else:
+            # No valid pairs with halogen and carbon
             return best_atoms
 
         # Find closest oxygen to halogen
@@ -900,16 +1004,6 @@ class SigmaHoleDockingEngine:
         total_energy = 0.0
         pairs_count = 0
 
-        # Pre-find halogen and bonded carbon for directional Coulomb correction
-        _halogen = None
-        _bonded_c = None
-        for _a in ligand_atoms:
-            if _a['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
-                _halogen = _a
-                break
-        if _halogen is not None:
-            _bonded_c = self._find_bonded_carbon(_halogen, ligand_atoms)
-
         # Calculate interactions between all ligand and receptor atoms
         for lig_atom in ligand_atoms:
             for rec_atom in receptor_atoms:
@@ -922,6 +1016,43 @@ class SigmaHoleDockingEngine:
                 # Skip if too far apart (to avoid negligible interactions)
                 if distance > 6.0:
                     continue
+
+                # Determine charge scale factor for directional corrections (default: no correction)
+                charge_factor = 1.0
+                _halogen = None
+                _bonded_c = None
+
+                # Check if lig_atom is a halogen
+                if lig_atom['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+                    _halogen = lig_atom
+                    # Find bonded carbon to this halogen
+                    if ligand_atoms:
+                        min_dist = float("inf")
+                        for carbon in ligand_atoms:
+                            if carbon['element'] == "C":
+                                dist = np.sqrt(
+                                    (lig_atom["x"] - carbon["x"])**2 +
+                                    (lig_atom["y"] - carbon["y"])**2 +
+                                    (lig_atom["z"] - carbon["z"])**2
+                                )
+                                if dist < min_dist:
+                                    min_dist = dist
+                                    _bonded_c = carbon
+                # Check if lig_atom is carbon bonded to a halogen
+                elif lig_atom['element'] == "C":
+                    # Find bonded halogen to this carbon
+                    min_dist = float("inf")
+                    for hydrogen in ligand_atoms:  # Actually looking for halogen
+                        if hydrogen['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+                            dist = np.sqrt(
+                                (lig_atom["x"] - hydrogen["x"])**2 +
+                                (lig_atom["y"] - hydrogen["y"])**2 +
+                                (lig_atom["z"] - hydrogen["z"])**2
+                            )
+                            if dist < min_dist:
+                                min_dist = dist
+                                _halogen = hydrogen
+                                _bonded_c = lig_atom
 
                 # Initialize energy variables to avoid UnboundLocalError
                 lj_energy = 0.0
@@ -957,7 +1088,6 @@ class SigmaHoleDockingEngine:
                     epsilon_r = max(self.dielectric_coeff, 1.0)
 
                     # Determine charge scale factor for this pair
-                    charge_factor = 1.0
                     if lig_atom is _halogen:
                         # Halogen-acceptor: suppress in sigma-hole direction
                         angle = self._compute_cx_acceptor_angle(_halogen, rec_atom, ligand_atoms)
@@ -984,7 +1114,7 @@ class SigmaHoleDockingEngine:
 
         return total_energy
     def calculate_physics_score(self, ligand_pdbqt: str, receptor_pdbqt: str,
-                              cutoff_distance: float = 6.0) -> float:
+                              cutoff_distance: float = 6.0) -> Tuple[float, bool]:
         """
         Calculate interaction energy using physics-based scoring (LJ + Coulomb).
 
@@ -1309,7 +1439,7 @@ class SigmaHoleDockingEngine:
                 total_energy = 50.0
 
             import sys; print(f'[FINAL] total={total_energy:.4f} lj={total_lj:.4f} coul={total_coulomb:.4f} pairs={pairs_count}', file=sys.stderr)
-            return (total_energy, steric_clash_detected)  # (energy, steric_clash_detected)
+            return (total_energy, True)  # (energy, success)
         except Exception as e:
             import traceback; traceback.print_exc()
             logger.error(f"Error in physics-based scoring: {e}")
@@ -1319,88 +1449,19 @@ class SigmaHoleDockingEngine:
         """
         Parse PDBQT file to extract atom information.
         Handles both ATOM and HETATM records (for OpenBabel compatibility).
+        Applies charge_scale correction to dummy atom charges.
 
         Returns:
             List of dictionaries with keys: 'element', 'x', 'y', 'z', 'charge'
         """
-        atoms = []
-        parsing_errors = 0
+        # Use shared parsing function
+        atoms = pdbqt_io.parse_pdbqt(pdbqt_path)
 
-        try:
-            with open(pdbqt_path, 'r') as f:
-                for line_num, line in enumerate(f, 1):
-                    line = line.strip()
-                    if line.startswith('ATOM') or line.startswith('HETATM'):
-                        # PDBQT format:
-                        # ATOM      1  I   LIG B   1       0.000   0.000   0.000  0.00  0.00    -0.100 I
-                        parts = line.split()
-                        if len(parts) >= 12:
-                            try:
-                                atom_index = int(parts[1])
-                                # In PDBQT format:
-                                # parts[2] = atom name (often the element symbol, e.g., "C", "O", "I")
-                                # parts[12] = atom type (can be different, e.g., "I3" for sigma-hole iodine)
-                                element = parts[2]  # Element symbol is at index 2 (3rd field)
-                                atom_type = parts[12] if len(parts) > 12 else element  # Atom type is at index 12 (13th field) if present
-
-                                # Normalize halogen element names (handle cases like "CL" -> "Cl")
-                                if element.upper() == 'CL':
-                                    element = 'Cl'
-                                elif element.upper() == 'BR':
-                                    element = 'Br'
-                                elif element.upper() == 'I':
-                                    element = 'I'  # Already correct, but explicit for clarity
-                                # Note: Hydrogen "H" doesn't need normalization
-
-                                # residue_name = parts[3]
-                                # chain_id = parts[4]
-                                # residue_seq = int(parts[5])
-                                x = float(parts[6])
-                                y = float(parts[7])
-                                z = float(parts[8])
-                                # occupancy = float(parts[9])
-                                # temperature_factor = float(parts[10])  # Usually 0.00 in PDBQT
-                                charge = float(parts[11])  # Charge is at index 11 in PDBQT format
-                                # Determine if this is a dummy atom (virtual charge site)
-                                # Dummy atoms often have atom_type starting with 'HD' or have element H with positive charge
-                                is_dummy = (atom_type == "EP")
-
-                                # Apply charge_scale to dummy atom charges
-                                if is_dummy and self.charge_scale != 1.0:
-                                    charge *= self.charge_scale
-
-                                atoms.append({
-                                    'index': atom_index,
-                                    'element': element,
-                                    'x': x, 'y': y, 'z': z,
-                                    'charge': charge,
-                                    'atom_type': atom_type,
-                                    'is_dummy': is_dummy
-                                })
-                            except (ValueError, IndexError) as e:
-                                parsing_errors += 1
-                                if parsing_errors <= 5:  # Limit error messages to avoid spam
-                                    logger.debug(f"Could not parse ATOM/HETATM line {line_num}: {line}")
-                                continue
-                        else:
-                            parsing_errors += 1
-                            if parsing_errors <= 5:
-                                logger.debug(f"Malformed ATOM/HETATM line {line_num} (too few fields): {line}")
-
-            if parsing_errors > 5:
-                logger.debug(f"... and {parsing_errors - 5} more parsing errors")
-
-        except FileNotFoundError:
-            logger.error(f"PDBQT file not found: {pdbqt_path}")
-            return []  # Return empty list to signal failure
-        except Exception as e:
-            logger.error(f"Error reading PDBQT file {pdbqt_path}: {e}")
-            return []  # Return empty list to signal failure
-
-        # Validate that we parsed some atoms
-        if not atoms:
-            logger.warning(f"No ATOM or HETATM records found in PDBQT file: {pdbqt_path}")
-            return atoms  # Return empty list - caller should handle this
+        # Apply charge_scale correction to dummy atom charges (specific to docking engine)
+        if self.charge_scale != 1.0:
+            for atom in atoms:
+                if atom.get('is_dummy', False):
+                    atom['charge'] *= self.charge_scale
 
         logger.debug(f"Parsed {len(atoms)} atoms from {pdbqt_path}")
         return atoms
@@ -1642,12 +1703,8 @@ class SigmaHoleDockingEngine:
         # Try physics-based first if requested or as reliable fallback
         if method == 'physics' or (method == 'auto' and self.use_physics_fallback):
             logger.info("Using physics-based scoring")
-            result = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
-            # Extract energy from tuple (new format) or use directly (backward compatibility)
-            if isinstance(result, tuple):
-                return result[0]  # Return energy component
-            else:
-                return result  # Backward compatibility: assume it's just the energy
+            energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
+            return energy
 
         # Try Vina/Smina scoring
         if method in ['auto', 'vinardo', 'ad4', 'vina']:
@@ -1677,12 +1734,8 @@ class SigmaHoleDockingEngine:
         # Final fallback to physics-based
         if self.use_physics_fallback:
             logger.info("Falling back to physics-based scoring")
-            result = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
-            # Extract energy from tuple (new format) or use directly (backward compatibility)
-            if isinstance(result, tuple):
-                return result[0]
-            else:
-                return result  # Backward compatibility
+            energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
+            return energy
 
         logger.error("All scoring methods failed")
         return 0.0
@@ -1719,12 +1772,7 @@ class SigmaHoleDockingEngine:
         # Handle physics-based scoring directly
         if scoring == 'physics':
             logger.info("Using physics-based scoring")
-            result = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
-            # Extract energy from tuple (new format) or use directly (backward compatibility)
-            if isinstance(result, tuple):
-                physics_energy = result[0]
-            else:
-                physics_energy = result  # Backward compatibility
+            physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
             results['success'] = True
             results['best_affinity'] = physics_energy
             results['all_affinities'] = [physics_energy]
@@ -1783,12 +1831,7 @@ class SigmaHoleDockingEngine:
             # If both fail, use physics-based as last resort
             if self.use_physics_fallback:
                 logger.warning("Both Vina and Smina failed, using physics-based scoring")
-                result = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
-                # Extract energy from tuple (new format) or use directly (backward compatibility)
-                if isinstance(result, tuple):
-                    physics_energy = result[0]
-                else:
-                    physics_energy = result  # Backward compatibility
+                physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
 
                 results['success'] = True
                 results['best_affinity'] = physics_energy
@@ -1892,13 +1935,7 @@ class SigmaHoleDockingEngine:
                     logger.warning(f"Docking failed for {ligand_name}: {docking_results.get('error', 'Unknown error')}")
                     # Fallback to physics-based scoring if enabled
                     if self.use_physics_fallback:
-                        result = self.calculate_physics_score(ligand_path, receptor_pdbqt)
-                        # Extract energy and steric clash info from tuple (new format) or use directly (backward compatibility)
-                        if isinstance(result, tuple):
-                            affinity, steric_clash = result
-                        else:
-                            affinity = result  # Backward compatibility
-                            steric_clash = False  # Assume no clash info in backward compatibility mode
+                        affinity, steric_clash = self.calculate_physics_score(ligand_path, receptor_pdbqt)
                     else:
                         affinity = float('nan')  # Return NaN instead of 0.0 to avoid silent failures
                         steric_clash = False
@@ -1961,7 +1998,7 @@ def example_usage():
     receptor_file = "acetone_receptor.pdbqt"
 
     if os.path.exists(ligand_file) and os.path.exists(receptor_file):
-        energy = engine.calculate_physics_score(ligand_file, receptor_file)
+        energy, _ = engine.calculate_physics_score(ligand_file, receptor_file)
         print(f"Physics-based energy: {energy:.4f} kcal/mol")
     else:
         print("Example files not found. Run ligand_generator.py and receptor_processor.py first.")

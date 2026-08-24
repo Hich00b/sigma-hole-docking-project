@@ -73,7 +73,7 @@ Simply run all cells in `sigma_hole_docking_colab.ipynb`
 
 #### Option B: Manual Execution
 ```python
-from sigma_hole_pipeline import SigmaHolePipeline
+from sigma_hole_docking.pipeline import SigmaHolePipeline
 
 # Initialize pipeline
 pipeline = SigmaHolePipeline()
@@ -215,7 +215,7 @@ Here's a complete example workflow for a virtual screening study:
 !pip install -r requirements_colab.txt
 
 # 2. Import pipeline
-from sigma_hole_pipeline import SigmaHolePipeline
+from sigma_hole_docking.pipeline import SigmaHolePipeline
 
 # 3. Initialize
 pipeline = SigmaHolePipeline()

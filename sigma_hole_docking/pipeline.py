@@ -23,11 +23,11 @@ import shutil
 from datetime import datetime
 
 # Import our custom modules
-from charge_calculator import SigmaHoleChargeCalculator
-from ligand_generator import SigmaHoleLigandGenerator
-from receptor_processor import SigmaHoleReceptorProcessor
-from docking_engine import SigmaHoleDockingEngine
-from results_analyzer import SigmaHoleResultsAnalyzer
+from .charge_calculator import SigmaHoleChargeCalculator
+from .ligand_generator import SigmaHoleLigandGenerator
+from .receptor_processor import SigmaHoleReceptorProcessor
+from .docking_engine import SigmaHoleDockingEngine
+from .results_analyzer import SigmaHoleResultsAnalyzer
 
 logging.basicConfig(
     level=logging.INFO,

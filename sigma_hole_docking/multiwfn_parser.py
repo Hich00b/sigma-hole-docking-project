@@ -181,15 +181,19 @@ class MultiwfnParser:
                         continue
 
             # Check if value is in a.u. and convert to kcal/mol (1 a.u. = 627.509 kcal/mol)
-            if 'a.u.' in result['raw_match'].lower() if result['raw_match'] else False:
+            if result['raw_match'] is not None and 'a.u.' in result['raw_match'].lower():
                 if vmax is not None:
                     vmax_conv = vmax * 627.509
                     logger.debug(f"Converted Vmax from a.u. to kcal/mol: {vmax:.6f} -> {vmax_conv:.6f}")
                     vmax = vmax_conv
 
             # Extract coordinates if present
-            if vmax is not None:
-                coord_match = self._coord_pattern.search(content, match.span()[1] if match else 0)
+            if vmax is not None and match is not None:
+                coord_match = self._coord_pattern.search(content, match.span()[1])
+            elif vmax is not None:
+                coord_match = self._coord_pattern.search(content)
+            else:
+                coord_match = None
                 if coord_match:
                     try:
                         result['coords'] = tuple(float(coord_match.group(i)) for i in range(1, 4))

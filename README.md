@@ -44,7 +44,7 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 
 4. **Run the pipeline** as demonstrated in the example notebook:
    ```python
-   from sigma_hole_pipeline import SigmaHolePipeline
+   from sigma_hole_docking.pipeline import SigmaHolePipeline
    
    pipeline = SigmaHolePipeline()
    

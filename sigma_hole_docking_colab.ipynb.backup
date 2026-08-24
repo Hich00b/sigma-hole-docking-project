@@ -291,7 +291,7 @@
     "if '.' not in sys.path:\n",
     "    sys.path.insert(0, '.')\n",
     "\n",
-    "from sigma_hole_docking.pipeline import SigmaHolePipeline\n",
+    "from sigma_hole_pipeline import SigmaHolePipeline\n",
     "\n",
     "# Paths – adjust if you used different names\n",
     "input_csv = 'input_from_upload.csv'   # from previous step\n",

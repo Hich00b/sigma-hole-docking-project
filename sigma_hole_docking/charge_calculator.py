@@ -16,11 +16,12 @@ class SigmaHoleChargeCalculator:
     """
     Calculates dummy atom charges for sigma-hole modeling.
 
-    Uses the formula: q = (Vmax × Δr) / k_coulomb
+    Uses the formula: q = (Vmax × (r_iso − Δr)) / k_coulomb
     where:
-        q = dummy atom charge (e)
-        Vmax = electrostatic potential maximum (kcal/mol)
-        Δr = distance from halogen nucleus to dummy atom (Å)
+        q = dummy charge (e)
+        Vmax = ESP max (kcal/mol)
+        r_iso = VdW radius / isosurface distance (Å)
+        Δr = halogen-to-dummy distance (Å)
         k_coulomb = 332.06 kcal·Å/(mol·e²)
     """
 
@@ -109,42 +110,7 @@ class SigmaHoleChargeCalculator:
 
         return charge
 
-    def calculate_charge_from_surface(self, vmax: float, halogen: str,
-                                     dummy_distance: float = 1.2) -> float:
-        """
-        Calculate charge considering the distance to the Vmax isosurface.
-
-        Args:
-            vmax: Electrostatic potential maximum (kcal/mol)
-            halogen: Halogen element
-            dummy_distance: Distance from halogen nucleus to dummy atom (Å)
-
-        Returns:
-            Dummy atom charge in electron units (e)
-        """
-        if halogen not in self.vdw_radii:
-            raise ValueError(f"Unknown halogen: {halogen}")
-
-        # Distance from dummy atom to Vmax isosurface
-        r_iso = self.vdw_radii[halogen]  # Approximate isosurface radius
-        delta_gap = r_iso - dummy_distance  # Gap between dummy and surface
-
-        if delta_gap <= 0:
-            logger.warning(f"Dummy distance ({dummy_distance}) >= VdW radius ({r_iso}). "
-                          f"Setting gap to 0.1 Å.")
-            delta_gap = 0.1
-
-        # Calculate charge needed at dummy position to produce Vmax at surface
-        # Vmax = k * q / (dummy_distance + delta_gap) = k * q / r_iso
-        # Therefore: q = (Vmax * r_iso) / k
-        charge = (vmax * r_iso) / self.k_coulomb
-        charge *= self.charge_scale
-
-        logger.debug(f"Surface-corrected charge for {halogen}: "
-                    f"Vmax={vmax} kcal/mol, r_iso={r_iso} Å → q={charge:.6f} e")
-
-        return charge
-
+    
     def batch_calculate_from_dataframe(self, df: pd.DataFrame,
                                      vmax_col: str = 'vmax',
                                      halogen_col: str = 'halogen',
@@ -212,12 +178,7 @@ def example_usage():
     print(f"Iodobenzene (Vmax={vmax_iodobenzene} kcal/mol): "
           f"dummy charge = {charge_i:.6f} e")
 
-    # Example: Using surface correction
-    charge_i_surf = calculator.calculate_charge_from_surface(
-        vmax_iodobenzene, 'I', dummy_distance=1.2)
-    print(f"Iodobenzene (surface-corrected): "
-          f"dummy charge = {charge_i_surf:.6f} e")
-
+    
     # Batch example
     data = {
         'compound_id': ['iodobenzene', 'chlorobenzene', 'fluorobenzene'],

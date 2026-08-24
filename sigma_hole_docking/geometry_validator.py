@@ -90,17 +90,16 @@ class GeometryValidator:
         return mol
 
     def _detect_carbon_hybridization(self, carbon_idx: int, mol: Chem.Mol) -> str:
-        """Detect carbon hybridization from bond count."""
         carbon = mol.GetAtomWithIdx(carbon_idx)
-        n_bonds = sum(1 for _ in carbon.GetNeighbors())
-        n_pi = sum(1 for bond in carbon.GetBonds() if bond.GetBondTypeAsDouble() > 1.5)
-
-        if n_pi == 2:
-            return 'sp2'
-        elif n_pi == 1:
-            return 'sp2'  # Aromatic considered sp2
-        else:
+        hyb = carbon.GetHybridization()
+        if hyb == Chem.HybridizationType.SP3:
             return 'sp3'
+        elif hyb in (Chem.HybridizationType.SP2, Chem.HybridizationType.SP2D):
+            return 'sp2'
+        elif hyb == Chem.HybridizationType.SP:
+            return 'sp'
+        else:
+            return 'sp3'  # safe default
 
     def _calculate_bond_length(self, mol: Chem.Mol, atom1_idx: int, atom2_idx: int) -> float:
         """Calculate distance between two atoms."""
