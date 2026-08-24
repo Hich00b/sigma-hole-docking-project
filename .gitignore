@@ -82,19 +82,6 @@ test_input.csv
 sigma_hole_pipeline.log
 test_pipeline.py
 input.csv
+ligands/MO-1-SHD_ligand.pdbqt
 sigma_hole_work/charged_compounds.csv
-
-# Data files — download via scripts/download_example_data.py
-*.pdbqt
-*.pdb
-*.sdf
-*.mol2
-ligands/
-receptors/
-temp/
-sigma_hole_work/
-
-# Exception: keep small example data files in examples/
-!examples/*.pdbqt
-!examples/*.csv
-!examples/*.ipynb
+receptors/receptor_receptor.pdbqt

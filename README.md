@@ -1,69 +1,74 @@
-# Sigma-Hole Molecular Docking Pipeline
+# Sigma-Hole Molecular Docking Pipeline - Google Colab Version
 
-A Python package for modeling directional halogen-bonding (σ-hole) interactions in molecular docking. The pipeline places dummy-atom charge sites along C–X bonds, calibrates their charge from DFT-computed electrostatic-potential maxima (Vmax), and scores receptor–ligand interactions with Lennard-Jones + Coulomb physics.
+This is a modified version of the Sigma-Hole Molecular Docking Pipeline designed to run in Google Colab notebooks instead of Hugging Face Spaces.
 
 ## Overview
 
-The sigma-hole pipeline models halogen bonding using:
+The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interactions using:
+1. Dummy atoms (Extra Points) - Virtual charge sites positioned along the C–X bond axis
+2. Vmax-based charges - Dummy charge calibrated from DFT-computed electrostatic potential maxima
+3. Physics-based scoring - Lennard-Jones + Coulomb energy evaluation
 
-1. **Dummy atoms (Extra Points)** — Virtual charge sites positioned along the C–X bond axis extension
-2. **Vmax-based charges** — Dummy charge calibrated from DFT-computed electrostatic potential maxima via Multiwfn
-3. **Physics-based scoring** — Lennard-Jones + Coulomb energy evaluation with directional corrections
+## Files in this Repository
 
-## Installation
+- `sigma_hole_pipeline.py` - Main pipeline orchestrator
+- Supporting modules:
+  - `charge_calculator.py` - Calculates dummy atom charges from Vmax values
+  - `ligand_generator.py` - Generates ligand structures with dummy atoms
+  - `receptor_processor.py` - Processes receptor PDBQT files
+  - `docking_engine.py` - Performs docking and scoring
+  - `results_analyzer.py` - Analyzes and ranks docking results
+  - `geometry_validator.py` - Validates input geometries
+  - `multiwfn_parser.py` - Parses Vmax values from Multiwfn output
+- `sigma_hole_docking_colab.ipynb` - Example Colab notebook demonstrating usage
+- `requirements_colab.txt` - Python package requirements for Colab
+- Example data files:
+  - `test_input.csv` - Example compound input data
+  - `receptor.pdbqt` - Lysozyme receptor (default)
+  - Various ligand and structure files (.pdbqt, .sdf)
 
-```bash
-pip install sigma-hole-docking
-```
+## How to Use in Google Colab
 
-For development:
+1. **Create a new Colab notebook** at [colab.research.google.com](https://colab.research.google.com)
 
-```bash
-git clone https://github.com/Hich00b/sigma-hole-docking-project.git
-cd sigma-hole-docking-project
-pip install -e ".[dev]"
-```
+2. **Upload the files** from this repository to your Colab notebook:
+   - All `.py` files
+   - `requirements_colab.txt`
+   - Example data files (or your own data)
+   - `sigma_hole_docking_colab.ipynb` (optional - you can copy the code from here)
 
-## Prerequisites
+3. **Install dependencies** in a code cell:
+   ```python
+   !pip install -r requirements_colab.txt
+   ```
 
-**Python ≥ 3.9** with the following packages (installed automatically):
-- numpy, pandas, rdkit, matplotlib, seaborn, py3Dmol
+4. **Run the pipeline** as demonstrated in the example notebook:
+   ```python
+   from sigma_hole_pipeline import SigmaHolePipeline
+   
+   pipeline = SigmaHolePipeline()
+   
+   results = pipeline.run_full_pipeline(
+       input_csv='your_compounds.csv',
+       receptor_input='your_receptor.pdbqt',
+       structure_dir='./your_structures',  # Optional: for DFT structures
+       structure_ext='.sdf'                 # Optional: structure file extension
+   )
+   ```
 
-**Optional — AutoDock Vina / Smina** for empirical scoring:
-```bash
-conda install -c conda-forge autodock-vina
-```
-If Vina/Smina are not installed, the pipeline automatically falls back to physics-based scoring. No configuration change is needed.
+5. **Analyze results** - The pipeline returns a dictionary containing:
+   - `docking_results`: DataFrame with docking scores and poses
+   - `analysis`: Dictionary with various analysis results including top hits
+   - Other processing intermediates
 
-## Quick Start
+## Data Requirements
 
-```python
-from sigma_hole_docking import SigmaHolePipeline
-
-pipeline = SigmaHolePipeline()
-
-results = pipeline.run_full_pipeline(
-    input_csv='examples/example_input.csv',
-    receptor_input='examples/receptor.pdbqt',
-    receptor_input_type='pdbqt',
-)
-```
-
-The pipeline returns a dictionary with:
-- `success`: Whether the pipeline completed
-- `analysis`: Dictionary with `results_dataframe`, `top_hits`, `summary_statistics`
-- `output_directory`: Path to output files (ranked CSV, reports)
-
-## Input CSV Format
-
+### Input CSV Format
 Your CSV file should contain at least these columns:
-
-| Column | Description |
-|--------|-------------|
-| `compound_id` | Unique identifier for each compound |
-| `smiles` | SMILES string (if generating structures from SMILES) |
-| `halogen` | Halogen type (I, Br, Cl, F) |
-| `vmax` | DFT Vmax value in kcal/mol |
+- `compound_id`: Unique identifier for each compound
+- `smiles`: SMILES string (if generating structures from SMILES)
+- `halogen`: Halogen type (I, Br, Cl, F)
+- `vmax`: DFT Vmax value (kcal/mol) - optional if using approximate values
 
 Example:
 ```csv
@@ -73,63 +78,58 @@ bromobenzene,c1ccccc1Br,Br,19.5
 chlorobenzene,c1ccccc1Cl,Cl,14.2
 ```
 
-## Receptor File
+### Receptor File
+- Format: PDBQT (AutoDock format)
+- Can be obtained from:
+  - [RCSB PDB](https://www.rcsb.org) → prepare with AutoDockTools or similar
+  - Pre-prepared receptors in the `static/receptors/` directory of the original repo
 
-- Format: PDBQT (AutoDock format) or PDB
-- PDBQT files can be prepared from PDB structures using [AutoDockTools](https://autodock.scripps.edu/)
-- Example receptor: `examples/receptor.pdbqt` (small acetone test case)
-- For a full lysozyme receptor, run `python scripts/download_example_data.py`
+### Structure Files (Optional but Recommended)
+For best accuracy, provide pre-optimized DFT structure files:
+- Format: SDF, PDB, or MOL2
+- Should match the geometry used for Vmax calculations
+- No hydrogen addition should be performed (preserves optimized geometry)
 
-## Package Structure
+## Differences from Hugging Face Spaces Version
 
-```
-sigma_hole_docking/
-├── __init__.py            — Public API exports
-├── pipeline.py            — Main pipeline orchestrator
-├── charge_calculator.py   — Dummy charge from Vmax values
-├── ligand_generator.py    — Ligand structures with dummy atoms
-├── receptor_processor.py  — Receptor PDBQT preparation
-├── docking_engine.py      — Docking orchestrator (< 500 lines)
-├── scoring.py             — LJ + Coulomb energy scoring
-├── alignment.py           — Molecular alignment along C-X axis
-├── pose_optimization.py   — Local pose refinement
-├── pdbqt_io.py            — Consolidated PDBQT parsing/writing
-├── results_analyzer.py    — Results analysis and ranking
-├── geometry_validator.py  — Input geometry validation
-└── multiwfn_parser.py     — Multiwfn Vmax output parser
-```
+### Removed Components
+- Gradio interface (`app.py`) - replaced with notebook interface
+- Hugging Face specific packages (`gradio`, `huggingface_hub`, `spaces`)
+- Deployment-specific code
 
-## Development
+### Kept Components
+- All core docking functionality
+- Charge calculation algorithms
+- Ligand generation with dummy atoms
+- Receptor processing
+- Physics-based scoring
+- Results analysis and visualization helpers
+- Geometry validation tools
 
-```bash
-# Run tests
-pytest --cov=sigma_hole_docking
+## Performance Notes
 
-# Lint
-ruff check sigma_hole_docking tests
+- In Colab, you have access to GPU/runtime resources (though this pipeline is primarily CPU-based)
+- First-time rdkit installation may take a few minutes
+- Large virtual screensings may be limited by Colab's runtime limits
 
-# Format
-ruff format sigma_hole_docking tests
-```
+## Troubleshooting
 
-CI runs on Python 3.9–3.12 with ruff + pytest on every push and pull request.
-
-## Example Data
-
-- `examples/example_input.csv` — Sample compound input
-- `examples/receptor.pdbqt` — Small acetone receptor for testing
-- `examples/sigma_hole_docking_colab.ipynb` — Example notebook
-- `scripts/download_example_data.py` — Downloads a lysozyme PDB from RCSB
+### Common Issues
+1. **RDKit installation problems**: Try restarting the runtime and reinstalling
+2. **Missing dependencies**: Ensure all packages from `requirements_colab.txt` are installed
+3. **File path issues**: Use absolute paths or ensure files are in the current working directory
+4. **Geometry mismatches**: For best results, use pre-optimized DFT structures that match your Vmax calculations
 
 ## References
 
+For more information about the Sigma-Hole method and halogen bonding, see:
 - Politzer, P., et al. (2013). Halogen bonding: An interaction divided. *CrystEngComm*, 15(16), 3029-3039.
 - Cavallo, G., et al. (2016). The halogen bond. *Chemical Reviews*, 116(4), 2478-2601.
-- Kolář, M. H., et al. (2019). σ-Hole interaction parameters. *J. Chem. Theory Comput.*, 15(5), 2972-2984.
+- Kolář, M. H., et al. (2019). σ-Hole interaction parameters. *Journal of chemical theory and computation*, 15(5), 2972-2984.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT License - see original repository for details.
 
 ## Questions/Collaboration?
 
