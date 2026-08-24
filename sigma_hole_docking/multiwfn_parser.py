@@ -10,7 +10,7 @@ import re
 import glob
 import logging
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,29 +19,23 @@ _PATTERNS = [
     # Pattern 1: "    Maximum ESP:   -12.345     at (  x,   y,   z)"
     # or "MEP Maximum (kcal/mol):    12.345 at ( x, y, z)"
     re.compile(
-        r'''(?:MEP\s+Maximum|Maximum\s+ESP|Max\s+ESP)[:\s]+([+-]?\d+\.?\d*)\s+(?:kcal/mol)?''',
-        re.IGNORECASE
+        r"""(?:MEP\s+Maximum|Maximum\s+ESP|Max\s+ESP)[:\s]+([+-]?\d+\.?\d*)\s+(?:kcal/mol)?""",
+        re.IGNORECASE,
     ),
     # Pattern 2: "The maximal value is   12.345   a.u."
     re.compile(
-        r'''(?:maximal|maximum)\s+value\s+is\s+([+-]?\d+\.?\d*)\s+(?:a\.u\.|kcal/mol)''',
-        re.IGNORECASE
+        r"""(?:maximal|maximum)\s+value\s+is\s+([+-]?\d+\.?\d*)\s+(?:a\.u\.|kcal/mol)""",
+        re.IGNORECASE,
     ),
     # Pattern 3: for surface-based analysis
-    re.compile(
-        r'''surface\s+.*?\s+max.*?\s+([+-]?\d+\.?\d*)\s+kcal/mol''',
-        re.IGNORECASE
-    ),
+    re.compile(r"""surface\s+.*?\s+max.*?\s+([+-]?\d+\.?\d*)\s+kcal/mol""", re.IGNORECASE),
     # Pattern 4: "positive value at point    12.345"
-    re.compile(
-        r'''positive.*?point\s+([+-]?\d+\.?\d*)''',
-        re.IGNORECASE
-    ),
+    re.compile(r"""positive.*?point\s+([+-]?\d+\.?\d*)""", re.IGNORECASE),
 ]
 
 # Patterns for coordinates (optional)
 _COORD_PATTERN = re.compile(
-    r'''at\s*\(\s*([+-]?\d+\.?\d*)\s*,\s*([+-]?\d+\.?\d*)\s*,\s*([+-]?\d+\.?\d*)\s*\)'''
+    r"""at\s*\(\s*([+-]?\d+\.?\d*)\s*,\s*([+-]?\d+\.?\d*)\s*,\s*([+-]?\d+\.?\d*)\s*\)"""
 )
 
 
@@ -70,7 +64,7 @@ class MultiwfnParser:
         Returns dict with vmax, coords, unit, or None if no starred maximum.
         """
         try:
-            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
         except Exception as e:
             logger.error(f"Cannot read {filepath}: {e}")
@@ -85,23 +79,23 @@ class MultiwfnParser:
         for line in content.splitlines():
             stripped = line.strip()
 
-            if 'Number of surface maxima' in stripped:
+            if "Number of surface maxima" in stripped:
                 in_maxima = True
                 past_header = False
                 continue
 
             if in_maxima:
                 # Header line: "# a.u. eV kcal/mol X/Y/Z coordinate(Angstrom)"
-                if stripped.startswith('#') or stripped == '':
+                if stripped.startswith("#") or stripped == "":
                     past_header = True
                     continue
                 if not past_header:
                     continue
 
                 # Data line — may start with '*'
-                is_starred = stripped.startswith('*')
+                is_starred = stripped.startswith("*")
                 # Pattern: [*] <num> <a.u.> <eV> <kcal/mol> <x> <y> <z>
-                parts = stripped.lstrip('*').split()
+                parts = stripped.lstrip("*").split()
                 if len(parts) < 7:
                     continue
 
@@ -124,7 +118,7 @@ class MultiwfnParser:
 
         if vmax_kcal is not None:
             logger.info(f"Surfanalysis Vmax = {vmax_kcal:.4f} kcal/mol from {filepath}")
-            return {'vmax': vmax_kcal, 'unit': 'kcal/mol', 'coords': coords}
+            return {"vmax": vmax_kcal, "unit": "kcal/mol", "coords": coords}
 
         return None
 
@@ -139,12 +133,12 @@ class MultiwfnParser:
             Dictionary with 'vmax', 'unit', 'coords', 'file', and 'success' keys
         """
         result = {
-            'file': multiwfn_file,
-            'vmax': None,
-            'unit': 'kcal/mol',
-            'coords': None,
-            'success': False,
-            'raw_match': None
+            "file": multiwfn_file,
+            "vmax": None,
+            "unit": "kcal/mol",
+            "coords": None,
+            "success": False,
+            "raw_match": None,
         }
 
         if not os.path.exists(multiwfn_file):
@@ -153,18 +147,20 @@ class MultiwfnParser:
 
         try:
             # Try surfanalysis.txt format first (has '*' markers for sigma-hole Vmax)
-            if multiwfn_file.endswith('_surfanalysis.txt') or 'surfanalysis' in os.path.basename(multiwfn_file):
+            if multiwfn_file.endswith("_surfanalysis.txt") or "surfanalysis" in os.path.basename(
+                multiwfn_file
+            ):
                 surf_result = self._parse_surfanalysis_txt(multiwfn_file)
                 if surf_result is not None:
-                    result['vmax'] = surf_result['vmax']
-                    result['coords'] = surf_result.get('coords')
-                    result['unit'] = surf_result.get('unit', 'kcal/mol')
-                    result['success'] = True
-                    result['raw_match'] = f"surfanalysis starred max: {surf_result['vmax']}"
+                    result["vmax"] = surf_result["vmax"]
+                    result["coords"] = surf_result.get("coords")
+                    result["unit"] = surf_result.get("unit", "kcal/mol")
+                    result["success"] = True
+                    result["raw_match"] = f"surfanalysis starred max: {surf_result['vmax']}"
                     logger.info(f"Extracted Vmax = {result['vmax']:.4f} from {multiwfn_file}")
                     return result
 
-            with open(multiwfn_file, 'r', encoding='utf-8', errors='replace') as f:
+            with open(multiwfn_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             vmax = None
@@ -175,43 +171,48 @@ class MultiwfnParser:
                 if match:
                     try:
                         vmax = float(match.group(1))
-                        result['raw_match'] = match.group(0)
+                        result["raw_match"] = match.group(0)
                         break
                     except (ValueError, IndexError):
                         continue
 
             # Check if value is in a.u. and convert to kcal/mol (1 a.u. = 627.509 kcal/mol)
-            if 'a.u.' in result['raw_match'].lower() if result['raw_match'] else False:
+            if result["raw_match"] is not None and "a.u." in result["raw_match"].lower():
                 if vmax is not None:
                     vmax_conv = vmax * 627.509
-                    logger.debug(f"Converted Vmax from a.u. to kcal/mol: {vmax:.6f} -> {vmax_conv:.6f}")
+                    logger.debug(
+                        f"Converted Vmax from a.u. to kcal/mol: {vmax:.6f} -> {vmax_conv:.6f}"
+                    )
                     vmax = vmax_conv
 
             # Extract coordinates if present
             if vmax is not None:
-                coord_match = self._coord_pattern.search(content, match.span()[1] if match else 0)
+                search_start = match.span()[1] if match is not None else 0
+                coord_match = self._coord_pattern.search(content, search_start)
                 if coord_match:
                     try:
-                        result['coords'] = tuple(float(coord_match.group(i)) for i in range(1, 4))
+                        result["coords"] = tuple(float(coord_match.group(i)) for i in range(1, 4))
                     except (ValueError, IndexError):
                         pass
 
-            result['vmax'] = vmax
-            result['success'] = vmax is not None
+            result["vmax"] = vmax
+            result["success"] = vmax is not None
 
             if vmax is None:
                 # Try to find any number in the file that looks like an ESP value
-                all_numbers = re.findall(r'([+-]?\d+\.\d+)', content)
+                all_numbers = re.findall(r"([+-]?\d+\.\d+)", content)
                 candidates = [float(n) for n in all_numbers if 5.0 <= abs(float(n)) <= 200.0]
                 if candidates:
                     # Return the largest positive value as Vmax
                     positive = [n for n in candidates if n > 10.0]
                     if positive:
-                        result['vmax'] = max(positive)
-                        result['success'] = True
-                        logger.warning(f"No standard Vmax pattern found; heuristically extracted: {result['vmax']}")
+                        result["vmax"] = max(positive)
+                        result["success"] = True
+                        logger.warning(
+                            f"No standard Vmax pattern found; heuristically extracted: {result['vmax']}"
+                        )
 
-            if result['success']:
+            if result["success"]:
                 logger.info(f"Extracted Vmax = {result['vmax']:.4f} from {multiwfn_file}")
             else:
                 logger.warning(f"No Vmax found in {multiwfn_file}")
@@ -221,8 +222,9 @@ class MultiwfnParser:
 
         return result
 
-    def parse_batch_vmax(self, directory: str, pattern: str = "*.out",
-                          compound_col: str = 'compound_id') -> pd.DataFrame:
+    def parse_batch_vmax(
+        self, directory: str, pattern: str = "*.out", compound_col: str = "compound_id"
+    ) -> pd.DataFrame:
         """
         Extract Vmax from multiple Multiwfn output files in a directory.
 
@@ -249,7 +251,7 @@ class MultiwfnParser:
             file_result = self.parse_vmax_output(f)
             # Extract compound_id from filename (strip directory and extension)
             basename = os.path.splitext(os.path.basename(f))[0]
-            file_result['compound_id'] = basename
+            file_result["compound_id"] = basename
             self.results.append(file_result)
 
         return self.to_dataframe()
@@ -265,8 +267,12 @@ class MultiwfnParser:
             return pd.DataFrame()
         return pd.DataFrame(self.results)
 
-    def merge_with_input(self, pipeline_csv: str, compound_id_col: str = 'compound_id',
-                          vmax_col_new: str = 'vmax_multiwfn') -> pd.DataFrame:
+    def merge_with_input(
+        self,
+        pipeline_csv: str,
+        compound_id_col: str = "compound_id",
+        vmax_col_new: str = "vmax_multiwfn",
+    ) -> pd.DataFrame:
         """
         Merge parsed Vmax values into an existing pipeline input CSV.
 
@@ -286,25 +292,24 @@ class MultiwfnParser:
         df_pipeline = pd.read_csv(pipeline_csv)
 
         # Prepare results for merge
-        df_results_renamed = df_results[['compound_id', 'vmax', 'unit', 'coords']].copy()
-        df_results_renamed = df_results_renamed.rename(columns={
-            'vmax': vmax_col_new,
-            'unit': f'{vmax_col_new}_unit'
-        })
+        df_results_renamed = df_results[["compound_id", "vmax", "unit", "coords"]].copy()
+        df_results_renamed = df_results_renamed.rename(
+            columns={"vmax": vmax_col_new, "unit": f"{vmax_col_new}_unit"}
+        )
 
         # Merge on compound_id
         df_merged = pd.merge(
             df_pipeline,
             df_results_renamed,
             left_on=compound_id_col,
-            right_on='compound_id',
-            how='left'
+            right_on="compound_id",
+            how="left",
         )
 
         # Drop duplicate compound_id column if it exists
-        if 'compound_id_y' in df_merged.columns:
-            df_merged = df_merged.drop(columns=['compound_id_y'])
-            df_merged = df_merged.rename(columns={'compound_id_x': 'compound_id'})
+        if "compound_id_y" in df_merged.columns:
+            df_merged = df_merged.drop(columns=["compound_id_y"])
+            df_merged = df_merged.rename(columns={"compound_id_x": "compound_id"})
 
         matched = df_merged[vmax_col_new].notna().sum()
         logger.info(f"Merged Vmax: {matched}/{len(df_merged)} compounds matched")
