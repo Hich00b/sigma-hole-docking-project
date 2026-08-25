@@ -14,6 +14,9 @@ import os
 import tempfile
 import math
 from . import pdbqt_io
+from . import scoring
+from . import alignment
+from . import pose_optimization
 
 logger = logging.getLogger(__name__)
 
@@ -78,90 +81,6 @@ class SigmaHoleDockingEngine:
         }
 
 
-    def _compute_cx_acceptor_angle(self, halogen_atom, acceptor_atom, ligand_atoms):
-        """Compute C-X...Acceptor angle at the halogen vertex.
-        Returns angle in degrees, or None if bonded carbon not found."""
-        hal_pos = np.array([halogen_atom['x'], halogen_atom['y'], halogen_atom['z']])
-        hal_elem = halogen_atom['element']
-        cutoff = {'F': 1.8, 'Cl': 2.2, 'Br': 2.4, 'I': 2.6, 'At': 2.7}.get(hal_elem, 2.3) + 0.3
-        min_c_dist = float('inf')
-        carbon_atom = None
-        for atom in ligand_atoms:
-            if atom['element'] == 'C':
-                c_pos = np.array([atom['x'], atom['y'], atom['z']])
-                d = np.linalg.norm(hal_pos - c_pos)
-                if d < min_c_dist and d < cutoff:
-                    min_c_dist = d
-                    carbon_atom = atom
-        if carbon_atom is None:
-            return None
-        vec_xc = np.array([carbon_atom['x'] - halogen_atom['x'],
-                           carbon_atom['y'] - halogen_atom['y'],
-                           carbon_atom['z'] - halogen_atom['z']])
-        vec_xa = np.array([acceptor_atom['x'] - halogen_atom['x'],
-                           acceptor_atom['y'] - halogen_atom['y'],
-                           acceptor_atom['z'] - halogen_atom['z']])
-        norm_xc = np.linalg.norm(vec_xc)
-        norm_xa = np.linalg.norm(vec_xa)
-        if norm_xc < 1e-8 or norm_xa < 1e-8:
-            return None
-        cos_angle = np.dot(vec_xc, vec_xa) / (norm_xc * norm_xa)
-        cos_angle = max(-1.0, min(1.0, cos_angle))
-        return float(np.degrees(np.arccos(cos_angle)))
-
-    def _halogen_acceptor_charge_scale(self, angle_deg):
-        """Directional Coulomb correction for halogen-acceptor.
-        In the sigma-hole direction (angle > 140), the halogen's negative
-        charge should be suppressed - the dummy atom handles this direction.
-        angle > 140: 0.0, angle < 90: 1.0, linear between."""
-        if angle_deg is None:
-            return 1.0
-        if angle_deg >= 140.0:
-            return 0.0
-        elif angle_deg <= 90.0:
-            return 1.0
-        else:
-            return 1.0 - (angle_deg - 90.0) / (140.0 - 90.0)
-
-    def _bonded_carbon_charge_scale(self, angle_deg):
-        """Directional Coulomb correction for bonded carbon.
-        The C's positive charge and the sigma-hole are the same polarization.
-        In sigma-hole direction this is double-counting; suppress it.
-        angle > 140: 0.0, angle < 90: 1.0, linear between."""
-        if angle_deg is None:
-            return 1.0
-        if angle_deg >= 140.0:
-            return 0.0
-        elif angle_deg <= 90.0:
-            return 1.0
-        else:
-            return 1.0 - (angle_deg - 90.0) / (140.0 - 90.0)
-
-    def _dummy_acceptor_charge_scale(self, rec_element):
-        """Scale dummy atom Coulomb by receptor atom type.
-        The sigma-hole only attracts electronegative acceptors (O, N, S, F).
-        Other receptor atoms should not interact with the dummy."""
-        if rec_element in ['O', 'N', 'S', 'F']:
-            return 1.0
-        else:
-            return 0.0
-
-    def _find_bonded_carbon(self, halogen_atom, ligand_atoms):
-        """Find the carbon atom bonded to the halogen."""
-        hal_pos = np.array([halogen_atom['x'], halogen_atom['y'], halogen_atom['z']])
-        hal_elem = halogen_atom['element']
-        cutoff = {'F': 1.8, 'Cl': 2.2, 'Br': 2.4, 'I': 2.6, 'At': 2.7}.get(hal_elem, 2.3) + 0.3
-        min_c_dist = float('inf')
-        carbon_atom = None
-        for atom in ligand_atoms:
-            if atom['element'] == 'C':
-                c_pos = np.array([atom['x'], atom['y'], atom['z']])
-                d = np.linalg.norm(hal_pos - c_pos)
-                if d < min_c_dist and d < cutoff:
-                    min_c_dist = d
-                    carbon_atom = atom
-        return carbon_atom
-
     def _get_lj_parameters(self, atom1: str, atom2: str) -> Tuple[float, float]:
         """
         Get Lennard-Jones parameters for an atom pair.
@@ -169,133 +88,48 @@ class SigmaHoleDockingEngine:
         Dummy atoms (hydrogens with positive charge) have zero LJ parameters
         as they represent virtual charge sites, not physical atoms.
         """
-        # Check if either atom is a dummy hydrogen (H with positive charge)
-        # Note: This check assumes the calling code will identify dummy atoms
-        # by their charge > 0.01. For now, we'll implement a simple version
-        # that treats all hydrogens as having normal LJ parameters, and
-        # the caller should handle dummy atom special case.
-        #
-        # TODO: To properly identify dummy atoms, we need to pass charge information
-        # to this method or store it in the atom dict. For now, we rely on the
-        # fact that dummy atoms should have very small LJ interactions anyway.
+        # Delegate to scoring module
+        return scoring._get_lj_parameters(atom1, atom2)
 
-        # Try direct lookup (sorted to handle atom1-atom2 vs atom2-atom1)
-        key1 = (atom1, atom2)
-        key2 = (atom2, atom1)
 
-        if key1 in self.lj_params:
-            return self.lj_params[key1]
-        elif key2 in self.lj_params:
-            return self.lj_params[key2]
+    def _compute_cx_acceptor_angle(self, halogen_atom, acceptor_atom, ligand_atoms):
+        """Compute C-X...Acceptor angle at the halogen vertex.
+        Returns angle in degrees, or None if bonded carbon not found."""
+        # Delegate to scoring module
+        return scoring._compute_cx_acceptor_angle(halogen_atom, acceptor_atom, ligand_atoms)
 
-        # Use mixing rules: epsilon = sqrt(eps1*eps2), sigma = (sigma1+sigma2)/2
-        # Default parameters for common atoms
-        defaults = {
-            'H': (0.05, 1.5),
-            'C': (0.10, 2.0),
-            'N': (0.10, 1.8),
-            'O': (0.15, 1.8),
-            'S': (0.20, 2.0),
-            'F': (0.15, 1.7),
-            'Cl': (0.20, 2.0),
-            'Br': (0.22, 2.1),
-            'I': (0.25, 2.2),
-        }
 
-        eps1, sig1 = defaults.get(atom1, (0.10, 2.0))
-        eps2, sig2 = defaults.get(atom2, (0.10, 2.0))
+    def _halogen_acceptor_charge_scale(self, angle_deg):
+        """Directional Coulomb correction for halogen-acceptor.
+        In the sigma-hole direction (angle > 140), the halogen's negative
+        charge should be suppressed - the dummy atom handles this direction.
+        angle > 140: 0.0, angle < 90: 1.0, linear between."""
+        # Delegate to scoring module
+        return scoring._halogen_acceptor_charge_scale(angle_deg)
 
-        epsilon = math.sqrt(eps1 * eps2)
-        sigma = (sig1 + sig2) / 2
 
-        return (epsilon, sigma)
+    def _bonded_carbon_charge_scale(self, angle_deg):
+        """Directional Coulomb correction for bonded carbon.
+        The C's positive charge and the sigma-hole are the same polarization.
+        In sigma-hole direction this is double-counting; suppress it.
+        angle > 140: 0.0, angle < 90: 1.0, linear between."""
+        # Delegate to scoring module
+        return scoring._bonded_carbon_charge_scale(angle_deg)
 
-    def _find_halogen_and_carbon(self, ligand_atoms: List[Dict]) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
-        """
-        Find halogen atoms and the carbons bonded to them in ligand.
 
-        Returns:
-            List of tuples (halogen_atom, carbon_atom) where:
-                - halogen_atom: Dict with halogen info (F, Cl, Br, I, At)
-                - carbon_atom: Dict of carbon bonded to halogen, or None if not found
-        """
-        pairs = []
-        carbon_atoms = [atom for atom in ligand_atoms if atom["element"] == "C"]
-        for atom in ligand_atoms:
-            if atom["element"] in ["F", "Cl", "Br", "I", "At"]:
-                halogen_atom = atom
-                # Find closest carbon to halogen (assumed to be bonded)
-                if carbon_atoms:
-                    min_dist = float("inf")
-                    closest_carbon = None
-                    for carbon in carbon_atoms:
-                        dist = np.sqrt(
-                            (halogen_atom["x"] - carbon["x"])**2 +
-                            (halogen_atom["y"] - carbon["y"])**2 +
-                            (halogen_atom["z"] - carbon["z"])**2
-                        )
-                        if dist < min_dist:
-                            min_dist = dist
-                            closest_carbon = carbon
-                    pairs.append((halogen_atom, closest_carbon))
-                else:
-                    pairs.append((halogen_atom, None))
-        return pairs
-    def _is_planar_molecule(self, atoms: List[Dict], tolerance: float = 0.01) -> bool:
-        """
-        Check if a molecule is planar (all atoms lie in the same plane within tolerance).
+    def _dummy_acceptor_charge_scale(self, rec_element):
+        """Scale dummy atom Coulomb by receptor atom type.
+        The sigma-hole only attracts electronegative acceptors (O, N, S, F).
+        Other receptor atoms should not interact with the dummy."""
+        # Delegate to scoring module
+        return scoring._dummy_acceptor_charge_scale(rec_element)
 
-        Args:
-            atoms: List of atom dictionaries with x, y, z coordinates
-            tolerance: Maximum Z-axis deviation to consider planar (Å)
 
-        Returns:
-            True if molecule is planar, False otherwise
-        """
-        if len(atoms) < 3:
-            return False  # Need at least 3 points to define a plane
+    def _find_bonded_carbon(self, halogen_atom, ligand_atoms):
+        """Find the carbon atom bonded to the halogen."""
+        # Delegate to scoring module
+        return scoring._find_bonded_carbon(halogen_atom, ligand_atoms)
 
-        # Extract coordinates
-        coords = np.array([[atom['x'], atom['y'], atom['z']] for atom in atoms])
-
-        # Use SVD to find the best-fit plane
-        # Center the coordinates
-        centroid = np.mean(coords, axis=0)
-        centered_coords = coords - centroid
-
-        # Perform SVD
-        U, S, Vt = np.linalg.svd(centered_coords)
-
-        # The normal to the plane is the last row of Vt (corresponding to smallest singular value)
-        normal = Vt[-1]
-
-        # Calculate distances from points to the plane
-        distances = np.abs(np.dot(centered_coords, normal))
-        max_deviation = np.max(distances)
-
-        return max_deviation < tolerance
-
-    def _add_planar_offset(self, atoms: List[Dict], max_offset: float = 0.01) -> List[Dict]:
-        """
-        Add small random Z-offset to break planarity degeneracy.
-
-        Args:
-            atoms: List of atom dictionaries
-            max_offset: Maximum offset magnitude (Å)
-
-        Returns:
-            New list of atoms with small random Z-offset applied
-        """
-        import copy
-        import random
-
-        offset_atoms = copy.deepcopy(atoms)
-        for atom in offset_atoms:
-            # Add small random offset to Z coordinate
-            offset = random.uniform(-max_offset, max_offset)
-            atom['z'] += offset
-
-        return offset_atoms
 
     def _find_acceptor_atoms(self, receptor_atoms: List[Dict]) -> List[Dict]:
         """
@@ -308,28 +142,57 @@ class SigmaHoleDockingEngine:
         Returns:
             List of acceptor atom dictionaries (prioritized by electronegativity)
         """
-        # Define acceptor elements in priority order (highest electronegativity first)
-        acceptor_elements = ['O', 'N', 'S', 'F']
+        # Delegate to alignment module
+        return alignment._find_acceptor_atoms(receptor_atoms)
 
-        acceptor_atoms = []
-        for element in acceptor_elements:
-            element_atoms = [atom for atom in receptor_atoms if atom['element'] == element]
-            if element_atoms:
-                acceptor_atoms.extend(element_atoms)
-                # Log which acceptor type was found
-                logger.info(f"Found {len(element_atoms)} {element} acceptor atom(s)")
-                # Continue to collect all acceptor types (O, N, S, F)
 
-        if not acceptor_atoms:
-            logger.warning("No acceptor atoms (O/N/S/F) found in receptor")
-            # Fallback to oxygen-only for backward compatibility
-            acceptor_atoms = [atom for atom in receptor_atoms if atom['element'] == 'O']
+    def _find_halogen_and_carbon(self, ligand_atoms: List[Dict]) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
+        """
+        Find halogen atoms and the carbons bonded to them in ligand.
 
-        return acceptor_atoms
+        Returns:
+            List of tuples (halogen_atom, carbon_atom) where:
+                - halogen_atom: Dict with halogen info (F, Cl, Br, I, At)
+                - carbon_atom: Dict of carbon bonded to halogen, or None if not found
+        """
+        # Delegate to alignment module
+        return alignment._find_halogen_and_carbon(ligand_atoms)
 
-    def _align_molecules_for_sigma_hole(self,
-                                      ligand_atoms: List[Dict],
-                                      receptor_atoms: List[Dict]) -> List[Dict]:
+
+    def _is_planar_molecule(self, atoms: List[Dict], tolerance: float = 0.01) -> bool:
+        """
+        Check if a molecule is planar (all atoms lie in the same plane within tolerance).
+
+        Args:
+            atoms: List of atom dictionaries with x, y, z coordinates
+            tolerance: Maximum Z-axis deviation to consider planar (Å)
+
+        Returns:
+            True if molecule is planar, False otherwise
+        """
+        # Delegate to alignment module
+        return alignment._is_planar_molecule(atoms, tolerance)
+
+
+    def _add_planar_offset(self, atoms: List[Dict], max_offset: float = 0.01) -> List[Dict]:
+        """
+        Add small random Z-offset to break planarity degeneracy.
+
+        Args:
+            atoms: List of atom dictionaries
+            max_offset: Maximum offset magnitude (Å)
+
+        Returns:
+            New list of atoms with small random Z-offset applied
+        """
+        # Delegate to alignment module
+        return alignment._add_planar_offset(atoms, max_offset)
+
+
+    def _align_molecules_for_sigma_hole(
+            self,
+            ligand_atoms: List[Dict],
+            receptor_atoms: List[Dict]) -> List[Dict]:
         """
         Align ligand for optimal sigma-hole interaction with receptor.
 
@@ -346,368 +209,9 @@ class SigmaHoleDockingEngine:
         Returns:
             Aligned ligand_atoms list
         """
-        # Handle planar molecules by adding small random offsets to prevent singularities
-        original_receptor_atoms = receptor_atoms
-        if self._is_planar_molecule(receptor_atoms, tolerance=0.01):
-            logger.warning("Receptor appears planar (Z variance < 0.01 Å), adding small random Z-offset to prevent alignment singularities")
-            receptor_atoms = self._add_planar_offset(receptor_atoms, max_offset=0.01)
+        # Delegate to alignment module
+        return alignment._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
 
-        # Find key atoms - handle multiple halogens
-        halogen_carbon_pairs = self._find_halogen_and_carbon(ligand_atoms)
-        acceptor_atoms = self._find_acceptor_atoms(receptor_atoms)
-
-        if not acceptor_atoms:
-            logger.warning("Could not find acceptor atoms for alignment")
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return ligand_atoms
-
-        # Filter out pairs where halogen is None (shouldn't happen based on implementation, but safe)
-        valid_pairs = [(h, c) for h, c in halogen_carbon_pairs if h is not None]
-        if not valid_pairs:
-            logger.warning("Could not find halogen atoms for alignment")
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return ligand_atoms
-
-        # Separate pairs with and without carbon
-        pairs_with_carbon = [(h, c) for h, c in valid_pairs if c is not None]
-        pairs_without_carbon = [(h, c) for h, c in valid_pairs if c is None]
-
-        # Select best halogen-carbon pair based on distance to acceptor
-        if pairs_with_carbon:
-            # Find the halogen-carbon pair where halogen is closest to any acceptor
-            best_pair = None
-            min_halogen_to_acceptor_dist = float('inf')
-
-            for halogen_atom, carbon_atom in pairs_with_carbon:
-                # Find distance from this halogen to closest acceptor
-                min_dist = float('inf')
-                for acceptor in acceptor_atoms:
-                    dist = np.sqrt(
-                        (halogen_atom['x'] - acceptor['x'])**2 +
-                        (halogen_atom['y'] - acceptor['y'])**2 +
-                        (halogen_atom['z'] - acceptor['z'])**2
-                    )
-                    if dist < min_dist:
-                        min_dist = dist
-
-                if min_dist < min_halogen_to_acceptor_dist:
-                    min_halogen_to_acceptor_dist = min_dist
-                    best_pair = (halogen_atom, carbon_atom)
-
-            halogen_atom, carbon_atom = best_pair
-
-        elif pairs_without_carbon:
-            # Fallback: use halogen without carbon (closest to acceptor)
-            best_pair = None
-            min_halogen_to_acceptor_dist = float('inf')
-
-            for halogen_atom, carbon_atom in pairs_without_carbon:
-                # Find distance from this halogen to closest acceptor
-                min_dist = float('inf')
-                for acceptor in acceptor_atoms:
-                    dist = np.sqrt(
-                        (halogen_atom['x'] - acceptor['x'])**2 +
-                        (halogen_atom['y'] - acceptor['y'])**2 +
-                        (halogen_atom['z'] - acceptor['z'])**2
-                    )
-                    if dist < min_dist:
-                        min_dist = dist
-
-                if min_dist < min_halogen_to_acceptor_dist:
-                    min_halogen_to_acceptor_dist = min_dist
-                    best_pair = (halogen_atom, carbon_atom)
-
-            halogen_atom, carbon_atom = best_pair
-
-            logger.warning("Could not find carbon bonded to halogen for alignment")
-            # Still try to align using just halogen position
-            result = self._align_by_halogen_only(ligand_atoms, receptor_atoms, halogen_atom, acceptor_atoms)
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return result
-
-        else:
-            # No valid pairs (should not happen due to earlier checks, but safe)
-            logger.warning("Could not find halogen or acceptor atoms for alignment")
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return ligand_atoms
-
-        # Find closest acceptor atom to halogen
-        min_dist = float('inf')
-        target_acceptor = None
-        for acceptor in acceptor_atoms:
-            dist = np.sqrt(
-                (halogen_atom['x'] - acceptor['x'])**2 +
-                (halogen_atom['y'] - acceptor['y'])**2 +
-                (halogen_atom['z'] - acceptor['z'])**2
-            )
-            if dist < min_dist:
-                min_dist = dist
-                target_acceptor = acceptor
-
-        if not target_acceptor:
-            logger.warning("Could not find target acceptor for alignment")
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return ligand_atoms
-
-        logger.info(f"Pre-alignment: {halogen_atom['element']}···{target_acceptor['element']} distance = {min_dist:.3f} Å")
-
-        # Define target geometry
-        # Halogen-specific optimal X...A distances (sum of vdW radii)
-        halogen_vdw = {'F': 1.47, 'Cl': 1.75, 'Br': 1.83, 'I': 1.98, 'At': 2.02}
-        acceptor_vdw = {'O': 1.52, 'N': 1.55, 'S': 1.80, 'F': 1.47}
-        h_vdw = halogen_vdw.get(halogen_atom['element'], 1.98)
-        a_vdw = acceptor_vdw.get(target_acceptor['element'], 1.52)
-        target_distance = h_vdw + a_vdw
-        target_angle_rad = np.pi  # 180° in radians
-
-        # Current vectors
-        # Vector from halogen to carbon (C-X bond direction, pointing FROM halogen TO carbon)
-        vec_hc = np.array([
-            carbon_atom['x'] - halogen_atom['x'],
-            carbon_atom['y'] - halogen_atom['y'],
-            carbon_atom['z'] - halogen_atom['z']
-        ])
-
-        # Vector from halogen to acceptor (X···A interaction)
-        vec_ha = np.array([
-            target_acceptor['x'] - halogen_atom['x'],
-            target_acceptor['y'] - halogen_atom['y'],
-            target_acceptor['z'] - halogen_atom['z']
-        ])
-
-        current_dist = np.linalg.norm(vec_ha)
-        if current_dist > 0:
-            vec_ha_unit = vec_ha / current_dist
-        else:
-            vec_ha_unit = vec_ha  # Avoid division by zero
-
-        # Current C-X···A angle
-        if np.linalg.norm(vec_hc) > 0 and current_dist > 0:
-            vec_hc_unit = vec_hc / np.linalg.norm(vec_hc)
-            dot_product = np.dot(vec_hc_unit, vec_ha_unit)
-            # Clamp to [-1, 1] for numerical stability
-            dot_product = max(-1.0, min(1.0, dot_product))
-            current_angle_rad = np.arccos(dot_product)
-            current_angle_deg = np.degrees(current_angle_rad)
-        else:
-            current_angle_rad = 0
-            current_angle_deg = 0
-
-        logger.info(f"Pre-alignment: C-{halogen_atom['element']}···{target_acceptor['element']} angle = {current_angle_deg:.1f}°")
-
-        # Step 1: Translate ligand to achieve target X···A distance
-        # We want to move the halogen along the X···A vector to reach target_distance
-        if current_dist > 0:
-            translation_factor = (target_distance - current_dist) / current_dist
-            translation_vec = vec_ha_unit * translation_factor * current_dist
-            # Actually: new_pos = old_pos + (current_dist - target_distance) * direction
-            # Move toward acceptor if distance too large, away if too small
-            translation_vec = vec_ha_unit * (current_dist - target_distance)
-        else:
-            # If atoms are on top of each other, move along arbitrary direction
-            translation_vec = np.array([target_distance, 0.0, 0.0])
-
-        # Apply translation to all ligand atoms
-        for atom in ligand_atoms:
-            atom['x'] += translation_vec[0]
-            atom['y'] += translation_vec[1]
-            atom['z'] += translation_vec[2]
-
-        # Recalculate vectors after translation
-        vec_ha = np.array([
-            target_acceptor['x'] - halogen_atom['x'],
-            target_acceptor['y'] - halogen_atom['y'],
-            target_acceptor['z'] - halogen_atom['z']
-        ])
-        current_dist = np.linalg.norm(vec_ha)
-        if current_dist > 0:
-            vec_ha_unit = vec_ha / current_dist
-
-        # Step 2: Rotate ligand around halogen to achieve target angle
-        # We want to rotate so that C-X···A angle = 180°
-        # This means we want vec_hc (C→X) to be opposite to vec_ha (X···A)
-        # So we want vec_hc to point in the same direction as -vec_ha
-
-        # If we have a carbon atom, rotate to align C-X bond
-        if carbon_atom and np.linalg.norm(vec_hc) > 0:
-            # Current vector from halogen to carbon (after translation)
-            vec_hc_current = np.array([
-                carbon_atom['x'] - halogen_atom['x'],
-                carbon_atom['y'] - halogen_atom['y'],
-                carbon_atom['z'] - halogen_atom['z']
-            ])
-
-            # Target vector from halogen to carbon should be opposite to X···A vector
-            # For linear C-X···A: C--X···A, so vector X→C should be opposite to vector X→A
-            vec_hc_target = -vec_ha_unit * np.linalg.norm(vec_hc_current)
-
-            # Calculate rotation to align vec_hc_current with vec_hc_target
-            if np.linalg.norm(vec_hc_current) > 0 and np.linalg.norm(vec_hc_target) > 0:
-                # Use Rodrigues' rotation formula
-                vec_hc_current_norm = vec_hc_current / np.linalg.norm(vec_hc_current)
-                vec_hc_target_norm = vec_hc_target / np.linalg.norm(vec_hc_target)
-
-                # Find rotation axis and angle
-                cross_product = np.cross(vec_hc_current_norm, vec_hc_target_norm)
-                dot_product = np.dot(vec_hc_current_norm, vec_hc_target_norm)
-                dot_product = max(-1.0, min(1.0, dot_product))  # Clamp for numerical stability
-
-                if abs(dot_product) < 1.0:  # Not already aligned
-                    rotation_angle = np.arccos(dot_product)
-                    if np.linalg.norm(cross_product) > 0:
-                        rotation_axis = cross_product / np.linalg.norm(cross_product)
-
-                        # Apply rotation to all ligand atoms around halogen
-                        cos_theta = np.cos(rotation_angle)
-                        sin_theta = np.sin(rotation_angle)
-
-                        for atom in ligand_atoms:
-                            # Vector from halogen to atom
-                            vec_ha = np.array([
-                                atom['x'] - halogen_atom['x'],
-                                atom['y'] - halogen_atom['y'],
-                                atom['z'] - halogen_atom['z']
-                            ])
-
-                            # Rodrigues' rotation formula
-                            vec_ha_rotated = (
-                                vec_ha * cos_theta +
-                                np.cross(rotation_axis, vec_ha) * sin_theta +
-                                rotation_axis * np.dot(rotation_axis, vec_ha) * (1 - cos_theta)
-                            )
-
-                            # Update atom position
-                            atom['x'] = halogen_atom['x'] + vec_ha_rotated[0]
-                            atom['y'] = halogen_atom['y'] + vec_ha_rotated[1]
-                            atom['z'] = halogen_atom['z'] + vec_ha_rotated[2]
-        else:
-            # If no carbon found, we can't rotate meaningfully, just note it
-            logger.warning("No carbon found for rotation alignment")
-
-        # Final check
-        final_dist = np.sqrt(
-            (halogen_atom['x'] - target_acceptor['x'])**2 +
-            (halogen_atom['y'] - target_acceptor['y'])**2 +
-            (halogen_atom['z'] - target_acceptor['z'])**2
-        )
-
-        if carbon_atom:
-            vec_hc_final = np.array([
-                carbon_atom['x'] - halogen_atom['x'],
-                carbon_atom['y'] - halogen_atom['y'],
-                carbon_atom['z'] - halogen_atom['z']
-            ])
-            vec_ha_final = np.array([
-                target_acceptor['x'] - halogen_atom['x'],
-                target_acceptor['y'] - halogen_atom['y'],
-                target_acceptor['z'] - halogen_atom['z']
-            ])
-            if np.linalg.norm(vec_hc_final) > 0 and np.linalg.norm(vec_ha_final) > 0:
-                vec_hc_final_norm = vec_hc_final / np.linalg.norm(vec_hc_final)
-                vec_ha_final_norm = vec_ha_final / np.linalg.norm(vec_ha_final)
-                dot_final = np.dot(vec_hc_final_norm, vec_ha_final_norm)
-                dot_final = max(-1.0, min(1.0, dot_final))
-                final_angle_rad = np.arccos(dot_final)
-                final_angle_deg = np.degrees(final_angle_rad)
-                logger.info(f"Post-alignment: {halogen_atom['element']}···{target_acceptor['element']} distance = {final_dist:.3f} Å, "
-                           f"C-{halogen_atom['element']}···{target_acceptor['element']} angle = {final_angle_deg:.1f}°")
-            else:
-                logger.info(f"Post-alignment: {halogen_atom['element']}···{target_acceptor['element']} distance = {final_dist:.3f} Å")
-        else:
-            logger.info(f"Post-alignment: {halogen_atom['element']}···{target_acceptor['element']} distance = {final_dist:.3f} Å")
-
-        # Restore original receptor atoms if we made a copy due to planar correction
-        if receptor_atoms is not original_receptor_atoms:
-            receptor_atoms = original_receptor_atoms
-
-        return ligand_atoms
-
-    def _align_by_halogen_only(self,
-                              ligand_atoms: List[Dict],
-                              receptor_atoms: List[Dict],
-                              halogen_atom: Dict,
-                              acceptor_atoms: List[Dict]) -> List[Dict]:
-        """
-        Simple alignment by distance only when carbon bonded to halogen is not found.
-        Handles planar molecules by adding small random offsets to prevent singularities.
-        """
-        # Handle planar molecules by adding small random offsets to prevent singularities
-        original_receptor_atoms = receptor_atoms
-        if self._is_planar_molecule(receptor_atoms, tolerance=0.01):
-            logger.warning("Receptor appears planar (Z variance < 0.01 Å), adding small random Z-offset to prevent alignment singularities")
-            receptor_atoms = self._add_planar_offset(receptor_atoms, max_offset=0.01)
-
-        if not acceptor_atoms:
-            # Restore original receptor atoms if we made a copy
-            if receptor_atoms is not original_receptor_atoms:
-                receptor_atoms = original_receptor_atoms
-            return ligand_atoms
-
-        # Find closest acceptor atom
-        min_dist = float('inf')
-        target_acceptor = None
-        for acceptor in acceptor_atoms:
-            dist = np.sqrt(
-                (halogen_atom['x'] - acceptor['x'])**2 +
-                (halogen_atom['y'] - acceptor['y'])**2 +
-                (halogen_atom['z'] - acceptor['z'])**2
-            )
-            if dist < min_dist:
-                min_dist = dist
-                target_acceptor = acceptor
-
-        if not target_acceptor:
-            return ligand_atoms
-
-        target_distance = 3.0
-        current_dist = min_dist
-
-        if current_dist > 0:
-            translation_factor = (target_distance - current_dist) / current_dist
-            translation_vec = np.array([
-                target_acceptor['x'] - halogen_atom['x'],
-                target_acceptor['y'] - halogen_atom['y'],
-                target_acceptor['z'] - halogen_atom['z']
-            ]) * (translation_factor if current_dist > 0 else 0)
-            if current_dist > 0:
-                # Normalize and scale
-                direction = np.array([
-                    target_acceptor['x'] - halogen_atom['x'],
-                    target_acceptor['y'] - halogen_atom['y'],
-                    target_acceptor['z'] - halogen_atom['z']
-                ])
-                direction_norm = np.linalg.norm(direction)
-                if direction_norm > 0:
-                    direction_unit = direction / direction_norm
-                    translation_vec = direction_unit * (target_distance - current_dist)
-                else:
-                    translation_vec = np.array([0.0, 0.0, 0.0])
-            else:
-                translation_vec = np.array([target_distance, 0.0, 0.0])
-        else:
-            translation_vec = np.array([target_distance, 0.0, 0.0])
-
-        # Apply translation
-        for atom in ligand_atoms:
-            atom['x'] += translation_vec[0]
-            atom['y'] += translation_vec[1]
-            atom['z'] += translation_vec[2]
-
-        # Restore original receptor atoms if we made a copy
-        if receptor_atoms is not original_receptor_atoms:
-            receptor_atoms = original_receptor_atoms
-
-        return ligand_atoms
 
     def _validate_coordinates(self, atoms: List[Dict], context: str = "") -> bool:
         """
@@ -720,18 +224,9 @@ class SigmaHoleDockingEngine:
         Returns:
             True if all coordinates are valid, False otherwise
         """
-        if not atoms:
-            if context:
-                logger.warning(f"VALIDATION: No atoms to validate {context}")
-            return True  # Empty list is technically valid
+        # Delegate to pose_optimization module
+        return pose_optimization._validate_coordinates(atoms, context)
 
-        for i, atom in enumerate(atoms):
-            for coord_name in ['x', 'y', 'z']:
-                coord_val = atom[coord_name]
-                if not isinstance(coord_val, (int, float)) or not np.isfinite(coord_val):
-                    logger.error(f"INVALID COORDINATES {context}: Atom {i} ({atom.get('element', '?')}) has {coord_name}={coord_val}")
-                    return False
-        return True
 
     def _local_optimize_pose(self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> List[Dict]:
         """
@@ -748,252 +243,9 @@ class SigmaHoleDockingEngine:
 
         Returns the pose with the lowest (most negative) energy.
         """
-        # Make a copy to work with
-        import copy
-        best_atoms = copy.deepcopy(ligand_atoms)
-        best_energy = self._calculate_pairwise_energy(best_atoms, receptor_atoms)
+        # Delegate to pose_optimization module
+        return pose_optimization._local_optimize_pose(ligand_atoms, receptor_atoms)
 
-        # Find key atoms for defining the optimization axes - handle multiple halogens
-        halogen_carbon_pairs = self._find_halogen_and_carbon(best_atoms)
-        acceptor_oxygens = self._find_acceptor_atoms(receptor_atoms)
-
-        if not acceptor_oxygens:
-            # Can't optimize without acceptor atoms
-            return best_atoms
-
-        # Filter out pairs where halogen is None (shouldn't happen based on implementation, but safe)
-        valid_pairs = [(h, c) for h, c in halogen_carbon_pairs if h is not None]
-        if not valid_pairs:
-            # Can't optimize without halogen atoms
-            return best_atoms
-
-        # Separate pairs with and without carbon
-        pairs_with_carbon = [(h, c) for h, c in valid_pairs if c is not None]
-        pairs_without_carbon = [(h, c) for h, c in valid_pairs if c is None]
-
-        # Select best halogen-carbon pair based on distance to oxygen
-        if pairs_with_carbon:
-            # Find the halogen-carbon pair where halogen is closest to any oxygen
-            best_pair = None
-            min_halogen_to_oxygen_dist = float('inf')
-
-            for halogen_atom, carbon_atom in pairs_with_carbon:
-                # Find distance from this halogen to closest oxygen
-                min_dist = float('inf')
-                for oxygen in acceptor_oxygens:
-                    dist = np.sqrt(
-                        (halogen_atom['x'] - oxygen['x'])**2 +
-                        (halogen_atom['y'] - oxygen['y'])**2 +
-                        (halogen_atom['z'] - oxygen['z'])**2
-                    )
-                    if dist < min_dist:
-                        min_dist = dist
-
-                if min_dist < min_halogen_to_oxygen_dist:
-                    min_halogen_to_oxygen_dist = min_dist
-                    best_pair = (halogen_atom, carbon_atom)
-
-            halogen_atom, carbon_atom = best_pair
-
-        elif pairs_without_carbon:
-            # Fallback: consider halogens without carbon, but we can't optimize without carbon
-            # (need carbon to define C-X bond axis for optimization)
-            return best_atoms
-
-        else:
-            # No valid pairs with halogen and carbon
-            return best_atoms
-
-        # Find closest oxygen to halogen
-        min_dist = float('inf')
-        target_oxygen = None
-        for oxygen in acceptor_oxygens:
-            dist = np.sqrt(
-                (halogen_atom['x'] - oxygen['x'])**2 +
-                (halogen_atom['y'] - oxygen['y'])**2 +
-                (halogen_atom['z'] - oxygen['z'])**2
-            )
-            if dist < min_dist:
-                min_dist = dist
-                target_oxygen = oxygen
-
-        if not target_oxygen:
-            return best_atoms
-
-        # Define optimization axes
-        # Vector from halogen to carbon (C-X bond direction)
-        vec_hc = np.array([
-            carbon_atom['x'] - halogen_atom['x'],
-            carbon_atom['y'] - halogen_atom['y'],
-            carbon_atom['z'] - halogen_atom['z']
-        ])
-
-        # Vector from halogen to oxygen (X···O interaction)
-        vec_ho = np.array([
-            target_oxygen['x'] - halogen_atom['x'],
-            target_oxygen['y'] - halogen_atom['y'],
-            target_oxygen['z'] - halogen_atom['z']
-        ])
-
-        # Normalize vectors
-        norm_hc = np.linalg.norm(vec_hc)
-        norm_ho = np.linalg.norm(vec_ho)
-
-        if norm_hc > 0 and norm_ho > 0:
-            vec_hc_unit = vec_hc / norm_hc
-            vec_ho_unit = vec_ho / norm_ho
-
-            # Compute two perpendicular vectors to vec_ho_unit for translational degrees of freedom
-            # Choose an arbitrary vector not parallel to vec_ho_unit
-            if abs(vec_ho_unit[0]) < 0.9:
-                arbitrary = np.array([1.0, 0.0, 0.0])
-            else:
-                arbitrary = np.array([0.0, 1.0, 0.0])
-            perp1 = np.cross(vec_ho_unit, arbitrary)
-            perp1_norm = np.linalg.norm(perp1)
-            if perp1_norm > 0:
-                perp1 = perp1 / perp1_norm
-            else:
-                # If cross product is zero (shouldn't happen with our arbitrary choice), try another
-                perp1 = np.cross(vec_ho_unit, np.array([0.0, 0.0, 1.0]))
-                perp1_norm = np.linalg.norm(perp1)
-                if perp1_norm > 0:
-                    perp1 = perp1 / perp1_norm
-                else:
-                    # Fallback: set to arbitrary perpendicular vectors
-                    perp1 = np.array([1.0, 0.0, 0.0])
-                    perp2 = np.array([0.0, 1.0, 0.0])
-            perp2 = np.cross(vec_ho_unit, perp1)  # Already unit if inputs are unit and perpendicular
-
-            # Define optimization parameters
-            # Existing degrees of freedom
-            translation_steps = 7  # -0.4, -0.2, 0, +0.2, +0.4 Å along X···O
-            rotation_steps = 7     # -15°, -10°, -5°, 0, +5°, +10°, +15° around axis perp to C-X and X···O
-            max_translation = 0.4  # Å
-            max_rotation = np.radians(8)  # radians
-
-            # New degrees of freedom for avoiding repulsive clashes
-            trans_perp_steps = 3  # finer grid along perp1 and perp2
-            rot_ho_steps = 3  # finer grid around X-O axis
-            max_trans_perp = 0.3  # A - increased to allow larger lateral shifts
-            max_rot_ho = np.radians(10)  # radians - increased for clash avoidance
-
-            # Grid search over all degrees of freedom
-            for t_idx in range(translation_steps):  # translation along X···O
-                # Translation factor: -1 to +1
-                t_factor = -1.0 + (2.0 * t_idx / (translation_steps - 1)) if translation_steps > 1 else 0.0
-                translation_ho = vec_ho_unit * (max_translation * t_factor)
-
-                for r_idx in range(rotation_steps):  # rotation around axis perp to C-X and X···O
-                    # Rotation factor: -1 to +1
-                    r_factor = -1.0 + (2.0 * r_idx / (rotation_steps - 1)) if rotation_steps > 1 else 0.0
-                    rotation_angle_perp = max_rotation * r_factor
-
-                    for tp1_idx in range(trans_perp_steps):  # translation along perp1
-                        tp1_factor = -1.0 + (2.0 * tp1_idx / (trans_perp_steps - 1)) if trans_perp_steps > 1 else 0.0
-                        translation_perp1 = perp1 * (max_trans_perp * tp1_factor)
-
-                        for tp2_idx in range(trans_perp_steps):  # translation along perp2
-                            tp2_factor = -1.0 + (2.0 * tp2_idx / (trans_perp_steps - 1)) if trans_perp_steps > 1 else 0.0
-                            translation_perp2 = perp2 * (max_trans_perp * tp2_factor)
-
-                            for rho_idx in range(rot_ho_steps):  # rotation around X···O axis
-                                rho_factor = -1.0 + (2.0 * rho_idx / (rot_ho_steps - 1)) if rot_ho_steps > 1 else 0.0
-                                rotation_angle_ho = max_rot_ho * rho_factor
-
-                                # Apply transformation: rotate, then translate
-                                test_atoms = copy.deepcopy(ligand_atoms)
-
-                                # Apply rotations
-                                # First: rotation around axis perp to C-X and X···O (existing)
-                                if rotation_angle_perp != 0:
-                                    rotation_axis_perp = np.cross(vec_hc_unit, vec_ho_unit)  # perp to both
-                                    axis_norm = np.linalg.norm(rotation_axis_perp)
-                                    if axis_norm > 0:
-                                        rotation_axis_perp = rotation_axis_perp / axis_norm
-                                        # Apply Rodrigues' rotation formula
-                                        cos_theta = np.cos(rotation_angle_perp)
-                                        sin_theta = np.sin(rotation_angle_perp)
-
-                                        for atom in test_atoms:
-                                            # Vector from halogen to atom
-                                            vec_ha = np.array([
-                                                atom['x'] - halogen_atom['x'],
-                                                atom['y'] - halogen_atom['y'],
-                                                atom['z'] - halogen_atom['z']
-                                            ])
-
-                                            # Rodrigues' rotation formula
-                                            vec_ha_rotated = (
-                                                vec_ha * cos_theta +
-                                                np.cross(rotation_axis_perp, vec_ha) * sin_theta +
-                                                rotation_axis_perp * np.dot(rotation_axis_perp, vec_ha) * (1 - cos_theta)
-                                            )
-
-                                            # Update atom position
-                                            atom['x'] = halogen_atom['x'] + vec_ha_rotated[0]
-                                            atom['y'] = halogen_atom['y'] + vec_ha_rotated[1]
-                                            atom['z'] = halogen_atom['z'] + vec_ha_rotated[2]
-
-                                # Second: rotation around X···O axis (new)
-                                if rotation_angle_ho != 0:
-                                    rotation_axis_ho = vec_ho_unit  # rotation around X···O axis
-                                    # Already normalized
-                                    # Apply Rodrigues' rotation formula
-                                    cos_theta = np.cos(rotation_angle_ho)
-                                    sin_theta = np.sin(rotation_angle_ho)
-
-                                    for atom in test_atoms:
-                                        # Vector from halogen to atom
-                                        vec_ha = np.array([
-                                            atom['x'] - halogen_atom['x'],
-                                            atom['y'] - halogen_atom['y'],
-                                            atom['z'] - halogen_atom['z']
-                                        ])
-
-                                        # Rodrigues' rotation formula
-                                        vec_ha_rotated = (
-                                            vec_ha * cos_theta +
-                                            np.cross(rotation_axis_ho, vec_ha) * sin_theta +
-                                            rotation_axis_ho * np.dot(rotation_axis_ho, vec_ha) * (1 - cos_theta)
-                                        )
-
-                                        # Update atom position
-                                        atom['x'] = halogen_atom['x'] + vec_ha_rotated[0]
-                                        atom['y'] = halogen_atom['y'] + vec_ha_rotated[1]
-                                        atom['z'] = halogen_atom['z'] + vec_ha_rotated[2]
-
-                                # Apply translations
-                                # First: translation along X···O (existing)
-                                if np.linalg.norm(translation_ho) > 0:
-                                    for atom in test_atoms:
-                                        atom['x'] += translation_ho[0]
-                                        atom['y'] += translation_ho[1]
-                                        atom['z'] += translation_ho[2]
-
-                                # Second: translation along perp1 (new)
-                                if np.linalg.norm(translation_perp1) > 0:
-                                    for atom in test_atoms:
-                                        atom['x'] += translation_perp1[0]
-                                        atom['y'] += translation_perp1[1]
-                                        atom['z'] += translation_perp1[2]
-
-                                # Third: translation along perp2 (new)
-                                if np.linalg.norm(translation_perp2) > 0:
-                                    for atom in test_atoms:
-                                        atom['x'] += translation_perp2[0]
-                                        atom['y'] += translation_perp2[1]
-                                        atom['z'] += translation_perp2[2]
-
-                                # Calculate energy for this pose
-                                energy = self._calculate_pairwise_energy(test_atoms, receptor_atoms)
-
-                                # Update best if this is better (more negative)
-                                if energy < best_energy:
-                                    best_energy = energy
-                                    best_atoms = copy.deepcopy(test_atoms)
-
-        return best_atoms
 
     def _calculate_pairwise_energy(self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> float:
         """
@@ -1001,118 +253,10 @@ class SigmaHoleDockingEngine:
         Uses the same physics as calculate_physics_score but without alignment/separation.
         Includes directional Coulomb corrections for sigma-hole interactions.
         """
-        total_energy = 0.0
-        pairs_count = 0
+        # Delegate to scoring module
+        return scoring._calculate_pairwise_energy(ligand_atoms, receptor_atoms)
 
-        # Calculate interactions between all ligand and receptor atoms
-        for lig_atom in ligand_atoms:
-            for rec_atom in receptor_atoms:
-                # Calculate distance
-                dx = lig_atom['x'] - rec_atom['x']
-                dy = lig_atom['y'] - rec_atom['y']
-                dz = lig_atom['z'] - rec_atom['z']
-                distance = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-                # Skip if too far apart (to avoid negligible interactions)
-                if distance > 6.0:
-                    continue
-
-                # Determine charge scale factor for directional corrections (default: no correction)
-                charge_factor = 1.0
-                _halogen = None
-                _bonded_c = None
-
-                # Check if lig_atom is a halogen
-                if lig_atom['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
-                    _halogen = lig_atom
-                    # Find bonded carbon to this halogen
-                    if ligand_atoms:
-                        min_dist = float("inf")
-                        for carbon in ligand_atoms:
-                            if carbon['element'] == "C":
-                                dist = np.sqrt(
-                                    (lig_atom["x"] - carbon["x"])**2 +
-                                    (lig_atom["y"] - carbon["y"])**2 +
-                                    (lig_atom["z"] - carbon["z"])**2
-                                )
-                                if dist < min_dist:
-                                    min_dist = dist
-                                    _bonded_c = carbon
-                # Check if lig_atom is carbon bonded to a halogen
-                elif lig_atom['element'] == "C":
-                    # Find bonded halogen to this carbon
-                    min_dist = float("inf")
-                    for hydrogen in ligand_atoms:  # Actually looking for halogen
-                        if hydrogen['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
-                            dist = np.sqrt(
-                                (lig_atom["x"] - hydrogen["x"])**2 +
-                                (lig_atom["y"] - hydrogen["y"])**2 +
-                                (lig_atom["z"] - hydrogen["z"])**2
-                            )
-                            if dist < min_dist:
-                                min_dist = dist
-                                _halogen = hydrogen
-                                _bonded_c = lig_atom
-
-                # Initialize energy variables to avoid UnboundLocalError
-                lj_energy = 0.0
-                coulomb_energy = 0.0
-
-                # Lennard-Jones (Van der Waals)
-                is_lig_dummy = lig_atom.get('is_dummy', False)
-                is_rec_dummy = rec_atom.get('is_dummy', False)
-
-                if is_lig_dummy or is_rec_dummy:
-                    epsilon, sigma = 0.02, 1.2
-                else:
-                    epsilon, sigma = self._get_lj_parameters(
-                        lig_atom['element'], rec_atom['element']
-                    )
-
-                # Prevent division by zero or excessively small distances
-                min_dist_clamp = max(0.6 * sigma, 0.5)
-                if distance < min_dist_clamp:
-                    distance = min_dist_clamp
-
-                if distance > 0:
-                    lj_ratio = sigma / distance
-                    lj_term = lj_ratio ** 6
-                    lj_energy = 4.0 * epsilon * (lj_term * lj_term - lj_term)
-                    if lj_energy > 10.0:
-                        lj_energy = 10.0
-                else:
-                    lj_energy = 0.0
-
-                # Coulomb (Electrostatics) with directional corrections
-                if distance > 0:
-                    epsilon_r = max(self.dielectric_coeff, 1.0)
-
-                    # Determine charge scale factor for this pair
-                    if lig_atom is _halogen:
-                        # Halogen-acceptor: suppress in sigma-hole direction
-                        angle = self._compute_cx_acceptor_angle(_halogen, rec_atom, ligand_atoms)
-                        charge_factor = self._halogen_acceptor_charge_scale(angle)
-                    elif _bonded_c is not None and lig_atom is _bonded_c:
-                        # Bonded carbon-acceptor: suppress in sigma-hole direction
-                        angle = self._compute_cx_acceptor_angle(_halogen, rec_atom, ligand_atoms)
-                        charge_factor = self._bonded_carbon_charge_scale(angle)
-                    elif is_lig_dummy:
-                        # Dummy atom: only interact with electronegative acceptors
-                        charge_factor = self._dummy_acceptor_charge_scale(rec_atom['element'])
-
-                    coulomb_energy = (self.k_coulomb *
-                        lig_atom['charge'] *
-                        rec_atom['charge'] /
-                        (epsilon_r * distance)) * charge_factor
-                else:
-                    coulomb_energy = 0.0
-
-                # Total pairwise energy
-                pair_energy = lj_energy + coulomb_energy
-                total_energy += pair_energy
-                pairs_count += 1
-
-        return total_energy
     def calculate_physics_score(self, ligand_pdbqt: str, receptor_pdbqt: str,
                               cutoff_distance: float = 6.0) -> Tuple[float, bool]:
         """
@@ -1349,10 +493,10 @@ class SigmaHoleDockingEngine:
                         coulomb_energy = 0.0
                         total_coulomb += coulomb_energy
 
-                # Total pairwise energy
-                pair_energy = lj_energy + coulomb_energy
-                total_energy += pair_energy
-                pairs_count += 1
+                    # Total pairwise energy
+                    pair_energy = lj_energy + coulomb_energy
+                    total_energy += pair_energy
+                    pairs_count += 1
             logger.info(f"Physics score: {total_energy:.4f} kcal/mol from {pairs_count} atom pairs")
             logger.info(f"LJ contribution: {total_lj:.4f} kcal/mol, Coulomb contribution: {total_coulomb:.4f} kcal/mol")
 
@@ -1444,27 +588,6 @@ class SigmaHoleDockingEngine:
             import traceback; traceback.print_exc()
             logger.error(f"Error in physics-based scoring: {e}")
             return (float('nan'), False)
-
-    def _parse_pdbqt(self, pdbqt_path: str) -> List[Dict]:
-        """
-        Parse PDBQT file to extract atom information.
-        Handles both ATOM and HETATM records (for OpenBabel compatibility).
-        Applies charge_scale correction to dummy atom charges.
-
-        Returns:
-            List of dictionaries with keys: 'element', 'x', 'y', 'z', 'charge'
-        """
-        # Use shared parsing function
-        atoms = pdbqt_io.parse_pdbqt(pdbqt_path)
-
-        # Apply charge_scale correction to dummy atom charges (specific to docking engine)
-        if self.charge_scale != 1.0:
-            for atom in atoms:
-                if atom.get('is_dummy', False):
-                    atom['charge'] *= self.charge_scale
-
-        logger.debug(f"Parsed {len(atoms)} atoms from {pdbqt_path}")
-        return atoms
 
     def run_vina_docking(self, receptor_pdbqt: str, ligand_pdbqt: str,
                         scoring: str = 'vinardo', exhaustiveness: int = 8,
@@ -1657,6 +780,17 @@ class SigmaHoleDockingEngine:
 
         return None
 
+    def _parse_pdbqt(self, pdbqt_path: str) -> List[Dict]:
+        """
+        Parse PDBQT file to extract atom information.
+        Delegates to pdbqt_io module for consistent parsing.
+
+        Returns:
+            List of dictionaries with keys: 'element', 'x', 'y', 'z', 'charge', 'is_dummy'
+        """
+        # Use the shared pdbqt_io module for parsing
+        return pdbqt_io.parse_pdbqt(pdbqt_path)
+
     def compute_receptor_center(self, receptor_pdbqt: str) -> Tuple[Optional[float], Optional[float], Optional[float]]:
         """
         Compute the geometric center of a receptor from its PDBQT file.
@@ -1667,24 +801,19 @@ class SigmaHoleDockingEngine:
         Returns:
             Tuple of (x, y, z) coordinates of the geometric center, or (None, None, None) if failed
         """
-        # Parse the PDBQT file using our standard parser
-        receptor_atoms = self._parse_pdbqt(receptor_pdbqt)
-        if not receptor_atoms:
-            logger.error(f"Failed to parse receptor PDBQT file for center computation: {receptor_pdbqt}")
-            return None, None, None
+        # Use the shared pdbqt_io module for computing geometric center
+        try:
+            # Parse the PDBQT file first
+            receptor_atoms = self._parse_pdbqt(receptor_pdbqt)
+            if not receptor_atoms:
+                logger.error(f"Failed to parse receptor PDBQT file for center computation: {receptor_pdbqt}")
+                return None, None, None
 
-        # Extract coordinates
-        coords = []
-        for atom in receptor_atoms:
-            coords.append([atom['x'], atom['y'], atom['z']])
-
-        if coords:
-            coords_array = np.array(coords)
-            center = coords_array.mean(axis=0)
-            return float(center[0]), float(center[1]), float(center[2])
-        else:
-            # This should not happen if receptor_atoms is not empty, but just in case
-            logger.error(f"No coordinates found in parsed receptor atoms: {receptor_pdbqt}")
+            # Compute geometric center using the shared function
+            center_x, center_y, center_z = pdbqt_io.compute_geometric_center(receptor_atoms)
+            return center_x, center_y, center_z
+        except Exception as e:
+            logger.error(f"Error computing receptor center: {e}")
             return None, None, None
 
     def score_only(self, receptor_pdbqt: str, ligand_pdbqt: str,
