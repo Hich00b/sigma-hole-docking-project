@@ -6,7 +6,7 @@ Contains physics-based scoring functionality for sigma-hole interactions.
 
 import numpy as np
 import math
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,10 +25,10 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
     for lig_atom in ligand_atoms:
         for rec_atom in receptor_atoms:
             # Calculate distance
-            dx = lig_atom['x'] - rec_atom['x']
-            dy = lig_atom['y'] - rec_atom['y']
-            dz = lig_atom['z'] - rec_atom['z']
-            distance = math.sqrt(dx*dx + dy*dy + dz*dz)
+            dx = lig_atom["x"] - rec_atom["x"]
+            dy = lig_atom["y"] - rec_atom["y"]
+            dz = lig_atom["z"] - rec_atom["z"]
+            distance = math.sqrt(dx * dx + dy * dy + dz * dz)
 
             # Skip if too far apart (to avoid negligible interactions)
             if distance > 6.0:
@@ -40,31 +40,31 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
             _bonded_c = None
 
             # Check if lig_atom is a halogen
-            if lig_atom['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+            if lig_atom["element"] in ["F", "Cl", "Br", "I", "At"]:
                 _halogen = lig_atom
                 # Find bonded carbon to this halogen
                 if ligand_atoms:
                     min_dist = float("inf")
                     for carbon in ligand_atoms:
-                        if carbon['element'] == "C":
+                        if carbon["element"] == "C":
                             dist = np.sqrt(
-                                (lig_atom["x"] - carbon["x"])**2 +
-                                (lig_atom["y"] - carbon["y"])**2 +
-                                (lig_atom["z"] - carbon["z"])**2
+                                (lig_atom["x"] - carbon["x"]) ** 2
+                                + (lig_atom["y"] - carbon["y"]) ** 2
+                                + (lig_atom["z"] - carbon["z"]) ** 2
                             )
                             if dist < min_dist:
                                 min_dist = dist
                                 _bonded_c = carbon
             # Check if lig_atom is carbon bonded to a halogen
-            elif lig_atom['element'] == "C":
+            elif lig_atom["element"] == "C":
                 # Find bonded halogen to this carbon
                 min_dist = float("inf")
                 for hydrogen in ligand_atoms:  # Actually looking for halogen
-                    if hydrogen['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+                    if hydrogen["element"] in ["F", "Cl", "Br", "I", "At"]:
                         dist = np.sqrt(
-                            (lig_atom["x"] - hydrogen["x"])**2 +
-                            (lig_atom["y"] - hydrogen["y"])**2 +
-                            (lig_atom["z"] - hydrogen["z"])**2
+                            (lig_atom["x"] - hydrogen["x"]) ** 2
+                            + (lig_atom["y"] - hydrogen["y"]) ** 2
+                            + (lig_atom["z"] - hydrogen["z"]) ** 2
                         )
                         if dist < min_dist:
                             min_dist = dist
@@ -76,15 +76,13 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
             coulomb_energy = 0.0
 
             # Lennard-Jones (Van der Waals)
-            is_lig_dummy = lig_atom.get('is_dummy', False)
-            is_rec_dummy = rec_atom.get('is_dummy', False)
+            is_lig_dummy = lig_atom.get("is_dummy", False)
+            is_rec_dummy = rec_atom.get("is_dummy", False)
 
             if is_lig_dummy or is_rec_dummy:
                 epsilon, sigma = 0.02, 1.2
             else:
-                epsilon, sigma = _get_lj_parameters(
-                    lig_atom['element'], rec_atom['element']
-                )
+                epsilon, sigma = _get_lj_parameters(lig_atom["element"], rec_atom["element"])
 
             # Prevent division by zero or excessively small distances
             min_dist_clamp = max(0.6 * sigma, 0.5)
@@ -93,7 +91,7 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
 
             if distance > 0:
                 lj_ratio = sigma / distance
-                lj_term = lj_ratio ** 6
+                lj_term = lj_ratio**6
                 lj_energy = 4.0 * epsilon * (lj_term * lj_term - lj_term)
                 if lj_energy > 10.0:
                     lj_energy = 10.0
@@ -118,15 +116,14 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
                     charge_factor = _bonded_carbon_charge_scale(angle)
                 elif is_lig_dummy:
                     # Dummy atom: only interact with electronegative acceptors
-                    charge_factor = _dummy_acceptor_charge_scale(rec_atom['element'])
+                    charge_factor = _dummy_acceptor_charge_scale(rec_atom["element"])
 
                 # Note: k_coulomb would need to be passed or accessed from instance
                 # For now, using default value - this should be adjusted when integrating
                 k_coulomb = 332.06  # Default value
-                coulomb_energy = (k_coulomb *
-                    lig_atom['charge'] *
-                    rec_atom['charge'] /
-                    (epsilon_r * distance)) * charge_factor
+                coulomb_energy = (
+                    k_coulomb * lig_atom["charge"] * rec_atom["charge"] / (epsilon_r * distance)
+                ) * charge_factor
             else:
                 coulomb_energy = 0.0
 
@@ -156,21 +153,18 @@ def _get_lj_parameters(atom1: str, atom2: str) -> Tuple[float, float]:
     # fact that dummy atoms should have very small LJ interactions anyway.
 
     # Try direct lookup (sorted to handle atom1-atom2 vs atom2-atom1)
-    key1 = (atom1, atom2)
-    key2 = (atom2, atom1)
-
     # These would need to be accessed from the instance or passed as parameters
     # For now, using default parameters
     defaults = {
-        'H': (0.05, 1.5),
-        'C': (0.10, 2.0),
-        'N': (0.10, 1.8),
-        'O': (0.15, 1.8),
-        'S': (0.20, 2.0),
-        'F': (0.15, 1.7),
-        'Cl': (0.20, 2.0),
-        'Br': (0.22, 2.1),
-        'I': (0.25, 2.2),
+        "H": (0.05, 1.5),
+        "C": (0.10, 2.0),
+        "N": (0.10, 1.8),
+        "O": (0.15, 1.8),
+        "S": (0.20, 2.0),
+        "F": (0.15, 1.7),
+        "Cl": (0.20, 2.0),
+        "Br": (0.22, 2.1),
+        "I": (0.25, 2.2),
     }
 
     eps1, sig1 = defaults.get(atom1, (0.10, 2.0))
@@ -185,26 +179,34 @@ def _get_lj_parameters(atom1: str, atom2: str) -> Tuple[float, float]:
 def _compute_cx_acceptor_angle(halogen_atom, acceptor_atom, ligand_atoms):
     """Compute C-X...Acceptor angle at the halogen vertex.
     Returns angle in degrees, or None if bonded carbon not found."""
-    hal_pos = np.array([halogen_atom['x'], halogen_atom['y'], halogen_atom['z']])
-    hal_elem = halogen_atom['element']
-    cutoff = {'F': 1.8, 'Cl': 2.2, 'Br': 2.4, 'I': 2.6, 'At': 2.7}.get(hal_elem, 2.3) + 0.3
-    min_c_dist = float('inf')
+    hal_pos = np.array([halogen_atom["x"], halogen_atom["y"], halogen_atom["z"]])
+    hal_elem = halogen_atom["element"]
+    cutoff = {"F": 1.8, "Cl": 2.2, "Br": 2.4, "I": 2.6, "At": 2.7}.get(hal_elem, 2.3) + 0.3
+    min_c_dist = float("inf")
     carbon_atom = None
     for atom in ligand_atoms:
-        if atom['element'] == 'C':
-            c_pos = np.array([atom['x'], atom['y'], atom['z']])
+        if atom["element"] == "C":
+            c_pos = np.array([atom["x"], atom["y"], atom["z"]])
             d = np.linalg.norm(hal_pos - c_pos)
             if d < min_c_dist and d < cutoff:
                 min_c_dist = d
                 carbon_atom = atom
     if carbon_atom is None:
         return None
-    vec_xc = np.array([carbon_atom['x'] - halogen_atom['x'],
-                       carbon_atom['y'] - halogen_atom['y'],
-                       carbon_atom['z'] - halogen_atom['z']])
-    vec_xa = np.array([acceptor_atom['x'] - halogen_atom['x'],
-                       acceptor_atom['y'] - halogen_atom['y'],
-                       acceptor_atom['z'] - halogen_atom['z']])
+    vec_xc = np.array(
+        [
+            carbon_atom["x"] - halogen_atom["x"],
+            carbon_atom["y"] - halogen_atom["y"],
+            carbon_atom["z"] - halogen_atom["z"],
+        ]
+    )
+    vec_xa = np.array(
+        [
+            acceptor_atom["x"] - halogen_atom["x"],
+            acceptor_atom["y"] - halogen_atom["y"],
+            acceptor_atom["z"] - halogen_atom["z"],
+        ]
+    )
     norm_xc = np.linalg.norm(vec_xc)
     norm_xa = np.linalg.norm(vec_xa)
     if norm_xc < 1e-8 or norm_xa < 1e-8:
@@ -248,7 +250,7 @@ def _dummy_acceptor_charge_scale(rec_element):
     """Scale dummy atom Coulomb by receptor atom type.
     The sigma-hole only attracts electronegative acceptors (O, N, S, F).
     Other receptor atoms should not interact with the dummy."""
-    if rec_element in ['O', 'N', 'S', 'F']:
+    if rec_element in ["O", "N", "S", "F"]:
         return 1.0
     else:
         return 0.0
@@ -256,14 +258,14 @@ def _dummy_acceptor_charge_scale(rec_element):
 
 def _find_bonded_carbon(halogen_atom, ligand_atoms):
     """Find the carbon atom bonded to the halogen."""
-    hal_pos = np.array([halogen_atom['x'], halogen_atom['y'], halogen_atom['z']])
-    hal_elem = halogen_atom['element']
-    cutoff = {'F': 1.8, 'Cl': 2.2, 'Br': 2.4, 'I': 2.6, 'At': 2.7}.get(hal_elem, 2.3) + 0.3
-    min_c_dist = float('inf')
+    hal_pos = np.array([halogen_atom["x"], halogen_atom["y"], halogen_atom["z"]])
+    hal_elem = halogen_atom["element"]
+    cutoff = {"F": 1.8, "Cl": 2.2, "Br": 2.4, "I": 2.6, "At": 2.7}.get(hal_elem, 2.3) + 0.3
+    min_c_dist = float("inf")
     carbon_atom = None
     for atom in ligand_atoms:
-        if atom['element'] == 'C':
-            c_pos = np.array([atom['x'], atom['y'], atom['z']])
+        if atom["element"] == "C":
+            c_pos = np.array([atom["x"], atom["y"], atom["z"]])
             d = np.linalg.norm(hal_pos - c_pos)
             if d < min_c_dist and d < cutoff:
                 min_c_dist = d

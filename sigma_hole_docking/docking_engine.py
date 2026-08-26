@@ -20,6 +20,7 @@ from . import pose_optimization
 
 logger = logging.getLogger(__name__)
 
+
 class SigmaHoleDockingEngine:
     """
     Docking engine for sigma-hole interactions.
@@ -31,7 +32,12 @@ class SigmaHoleDockingEngine:
     4. GB/SA or other implicit solvation models - if available
     """
 
-    def __init__(self, use_physics_fallback: bool = True, dielectric_coeff: float = 0.0, charge_scale: float = 1.0):
+    def __init__(
+        self,
+        use_physics_fallback: bool = True,
+        dielectric_coeff: float = 0.0,
+        charge_scale: float = 1.0,
+    ):
         """
         Initialize the docking engine.
 
@@ -52,34 +58,36 @@ class SigmaHoleDockingEngine:
         # Format: (epsilon, sigma) where epsilon is well depth (kcal/mol), sigma is distance (Å)
         self.lj_params = {
             # (atom1, atom2): (epsilon, sigma)
-            ('O', 'H'): (0.075, 2.0),   # Oxygen-hydrogen (for dummy H)
-            ('O', 'C'): (0.10, 3.5),   # Oxygen-carbon
-            ('O', 'O'): (0.05, 3.0),   # Oxygen-oxygen
-            ('C', 'H'): (0.025, 2.5),   # Carbon-hydrogen
-            ('C', 'C'): (0.05, 3.4),   # Carbon-carbon - FIXED: was 4.0, too high causing repulsive energies
+            ("O", "H"): (0.075, 2.0),  # Oxygen-hydrogen (for dummy H)
+            ("O", "C"): (0.10, 3.5),  # Oxygen-carbon
+            ("O", "O"): (0.05, 3.0),  # Oxygen-oxygen
+            ("C", "H"): (0.025, 2.5),  # Carbon-hydrogen
+            ("C", "C"): (
+                0.05,
+                3.4,
+            ),  # Carbon-carbon - FIXED: was 4.0, too high causing repulsive energies
             # Halogen-specific parameters (approximate)
             # Halogen-oxygen: real vdW attraction for steric repulsion
-            ('O', 'F'): (0.05, 2.8),
-            ('O', 'Cl'): (0.10, 3.1),
-            ('O', 'Br'): (0.15, 3.2),
-            ('O', 'I'): (0.20, 3.3),
+            ("O", "F"): (0.05, 2.8),
+            ("O", "Cl"): (0.10, 3.1),
+            ("O", "Br"): (0.15, 3.2),
+            ("O", "I"): (0.20, 3.3),
             # Halogen-carbon
-            ('C', 'F'): (0.05, 2.9),
-            ('C', 'Cl'): (0.10, 3.2),
-            ('C', 'Br'): (0.15, 3.3),
-            ('C', 'I'): (0.20, 3.5),
+            ("C", "F"): (0.05, 2.9),
+            ("C", "Cl"): (0.10, 3.2),
+            ("C", "Br"): (0.15, 3.3),
+            ("C", "I"): (0.20, 3.5),
             # Halogen-nitrogen
-            ('N', 'F'): (0.05, 2.8),
-            ('N', 'Cl'): (0.10, 3.1),
-            ('N', 'Br'): (0.15, 3.2),
-            ('N', 'I'): (0.20, 3.3),
+            ("N", "F"): (0.05, 2.8),
+            ("N", "Cl"): (0.10, 3.1),
+            ("N", "Br"): (0.15, 3.2),
+            ("N", "I"): (0.20, 3.3),
             # Halogen-sulfur
-            ('S', 'F'): (0.05, 3.0),
-            ('S', 'Cl'): (0.10, 3.3),
-            ('S', 'Br'): (0.15, 3.4),
-            ('S', 'I'): (0.20, 3.6),
+            ("S", "F"): (0.05, 3.0),
+            ("S", "Cl"): (0.10, 3.3),
+            ("S", "Br"): (0.15, 3.4),
+            ("S", "I"): (0.20, 3.6),
         }
-
 
     def _get_lj_parameters(self, atom1: str, atom2: str) -> Tuple[float, float]:
         """
@@ -91,13 +99,11 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._get_lj_parameters(atom1, atom2)
 
-
     def _compute_cx_acceptor_angle(self, halogen_atom, acceptor_atom, ligand_atoms):
         """Compute C-X...Acceptor angle at the halogen vertex.
         Returns angle in degrees, or None if bonded carbon not found."""
         # Delegate to scoring module
         return scoring._compute_cx_acceptor_angle(halogen_atom, acceptor_atom, ligand_atoms)
-
 
     def _halogen_acceptor_charge_scale(self, angle_deg):
         """Directional Coulomb correction for halogen-acceptor.
@@ -107,7 +113,6 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._halogen_acceptor_charge_scale(angle_deg)
 
-
     def _bonded_carbon_charge_scale(self, angle_deg):
         """Directional Coulomb correction for bonded carbon.
         The C's positive charge and the sigma-hole are the same polarization.
@@ -116,7 +121,6 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._bonded_carbon_charge_scale(angle_deg)
 
-
     def _dummy_acceptor_charge_scale(self, rec_element):
         """Scale dummy atom Coulomb by receptor atom type.
         The sigma-hole only attracts electronegative acceptors (O, N, S, F).
@@ -124,12 +128,10 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._dummy_acceptor_charge_scale(rec_element)
 
-
     def _find_bonded_carbon(self, halogen_atom, ligand_atoms):
         """Find the carbon atom bonded to the halogen."""
         # Delegate to scoring module
         return scoring._find_bonded_carbon(halogen_atom, ligand_atoms)
-
 
     def _find_acceptor_atoms(self, receptor_atoms: List[Dict]) -> List[Dict]:
         """
@@ -145,8 +147,9 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._find_acceptor_atoms(receptor_atoms)
 
-
-    def _find_halogen_and_carbon(self, ligand_atoms: List[Dict]) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
+    def _find_halogen_and_carbon(
+        self, ligand_atoms: List[Dict]
+    ) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
         """
         Find halogen atoms and the carbons bonded to them in ligand.
 
@@ -157,7 +160,6 @@ class SigmaHoleDockingEngine:
         """
         # Delegate to alignment module
         return alignment._find_halogen_and_carbon(ligand_atoms)
-
 
     def _is_planar_molecule(self, atoms: List[Dict], tolerance: float = 0.01) -> bool:
         """
@@ -173,7 +175,6 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._is_planar_molecule(atoms, tolerance)
 
-
     def _add_planar_offset(self, atoms: List[Dict], max_offset: float = 0.01) -> List[Dict]:
         """
         Add small random Z-offset to break planarity degeneracy.
@@ -188,11 +189,9 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._add_planar_offset(atoms, max_offset)
 
-
     def _align_molecules_for_sigma_hole(
-            self,
-            ligand_atoms: List[Dict],
-            receptor_atoms: List[Dict]) -> List[Dict]:
+        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
+    ) -> List[Dict]:
         """
         Align ligand for optimal sigma-hole interaction with receptor.
 
@@ -212,7 +211,6 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
 
-
     def _validate_coordinates(self, atoms: List[Dict], context: str = "") -> bool:
         """
         Validate that all coordinates are finite numbers (not NaN or Inf).
@@ -227,8 +225,9 @@ class SigmaHoleDockingEngine:
         # Delegate to pose_optimization module
         return pose_optimization._validate_coordinates(atoms, context)
 
-
-    def _local_optimize_pose(self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> List[Dict]:
+    def _local_optimize_pose(
+        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
+    ) -> List[Dict]:
         """
         Perform local optimization to refine the sigma-hole pose and find the energy minimum.
 
@@ -246,8 +245,9 @@ class SigmaHoleDockingEngine:
         # Delegate to pose_optimization module
         return pose_optimization._local_optimize_pose(ligand_atoms, receptor_atoms)
 
-
-    def _calculate_pairwise_energy(self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> float:
+    def _calculate_pairwise_energy(
+        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
+    ) -> float:
         """
         Calculate pairwise energy between ligand and receptor atoms (helper for optimization).
         Uses the same physics as calculate_physics_score but without alignment/separation.
@@ -256,9 +256,9 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._calculate_pairwise_energy(ligand_atoms, receptor_atoms)
 
-
-    def calculate_physics_score(self, ligand_pdbqt: str, receptor_pdbqt: str,
-                              cutoff_distance: float = 6.0) -> Tuple[float, bool]:
+    def calculate_physics_score(
+        self, ligand_pdbqt: str, receptor_pdbqt: str, cutoff_distance: float = 6.0
+    ) -> Tuple[float, bool]:
         """
         Calculate interaction energy using physics-based scoring (LJ + Coulomb).
 
@@ -279,51 +279,67 @@ class SigmaHoleDockingEngine:
             # Parse PDBQT files to get atoms, positions, and charges
             ligand_atoms = self._parse_pdbqt(ligand_pdbqt)
             if not ligand_atoms:
-                logger.error(f"Failed to parse ligand PDBQT file: {ligand_pdbqt} - no valid ATOM/HETATM records found")
-                return (float('nan'), False)
+                logger.error(
+                    f"Failed to parse ligand PDBQT file: {ligand_pdbqt} - no valid ATOM/HETATM records found"
+                )
+                return (float("nan"), False)
             logger.info(f"Parsed ligand: {len(ligand_atoms)} atoms from {ligand_pdbqt}")
 
             receptor_atoms = self._parse_pdbqt(receptor_pdbqt)
             if not receptor_atoms:
-                logger.error(f"Failed to parse receptor PDBQT file: {receptor_pdbqt} - no valid ATOM/HETATM records found")
-                return (float('nan'), False)
+                logger.error(
+                    f"Failed to parse receptor PDBQT file: {receptor_pdbqt} - no valid ATOM/HETATM records found"
+                )
+                return (float("nan"), False)
             logger.info(f"Parsed receptor: {len(receptor_atoms)} atoms from {receptor_pdbqt}")
 
             # Validate that receptor has at least one electronegative atom (O/N/S/F) for sigma-hole interactions
             # This is important because without acceptor atoms, sigma-hole scoring doesn't make sense
-            electronegative_elements = {'O', 'N', 'S', 'F'}
-            electronegative_count = sum(1 for atom in receptor_atoms if atom['element'] in electronegative_elements)
+            electronegative_elements = {"O", "N", "S", "F"}
+            electronegative_count = sum(
+                1 for atom in receptor_atoms if atom["element"] in electronegative_elements
+            )
 
             if electronegative_count == 0:
-                logger.warning(f"No electronegative atoms (O/N/S/F) found in receptor PDBQT: {receptor_pdbqt}")
-                logger.warning("Sigma-hole interactions require acceptor atoms (O/N/S/F). Returning NaN.")
-                return (float('nan'), False)
+                logger.warning(
+                    f"No electronegative atoms (O/N/S/F) found in receptor PDBQT: {receptor_pdbqt}"
+                )
+                logger.warning(
+                    "Sigma-hole interactions require acceptor atoms (O/N/S/F). Returning NaN."
+                )
+                return (float("nan"), False)
 
             # Align ligand for sigma-hole interaction if halogen and oxygen are present
-            logger.info(f"Aligning ligand: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms")
+            logger.info(
+                f"Aligning ligand: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms"
+            )
             ligand_atoms = self._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
             # Validate coordinates after alignment
             if not self._validate_coordinates(ligand_atoms, "after alignment"):
                 logger.error("ALIGNMENT FAILED: Invalid coordinates detected after alignment")
                 # Return NaN to indicate failure instead of proceeding with invalid coordinates
-                return (float('nan'), False)
+                return (float("nan"), False)
 
             # Perform local optimization to refine the pose and find energy minimum
-            logger.info(f"Local optimizing pose: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms")
+            logger.info(
+                f"Local optimizing pose: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms"
+            )
             ligand_atoms = self._local_optimize_pose(ligand_atoms, receptor_atoms)
             # Validate coordinates after optimization
             if not self._validate_coordinates(ligand_atoms, "after local optimization"):
-                logger.error("OPTIMIZATION FAILED: Invalid coordinates detected after local optimization")
+                logger.error(
+                    "OPTIMIZATION FAILED: Invalid coordinates detected after local optimization"
+                )
                 # Return NaN to indicate failure instead of proceeding with invalid coordinates
-                return (float('nan'), False)
+                return (float("nan"), False)
 
             # Compute geometric centers (for diagnostics only, no separation applied)
             def compute_center(atoms):
                 if not atoms:
                     return 0.0, 0.0, 0.0
-                sum_x = sum(atom['x'] for atom in atoms)
-                sum_y = sum(atom['y'] for atom in atoms)
-                sum_z = sum(atom['z'] for atom in atoms)
+                sum_x = sum(atom["x"] for atom in atoms)
+                sum_y = sum(atom["y"] for atom in atoms)
+                sum_z = sum(atom["z"] for atom in atoms)
                 count = len(atoms)
                 return sum_x / count, sum_y / count, sum_z / count
 
@@ -372,16 +388,16 @@ class SigmaHoleDockingEngine:
             halogen_atom = None
             bonded_carbon = None
             for _a in ligand_atoms:
-                if _a['element'] in ['F', 'Cl', 'Br', 'I', 'At']:
+                if _a["element"] in ["F", "Cl", "Br", "I", "At"]:
                     halogen_atom = _a
                     break
             if halogen_atom is not None:
                 bonded_carbon = self._find_bonded_carbon(halogen_atom, ligand_atoms)
 
             # Diagnostic tracking for key distances
-            min_distance = float('inf')
-            min_halogen_o_distance = float('inf')
-            min_dummy_o_distance = float('inf')
+            min_distance = float("inf")
+            min_halogen_o_distance = float("inf")
+            min_dummy_o_distance = float("inf")
             has_halogen = False
             has_oxygen = False
             has_dummy = False
@@ -396,19 +412,19 @@ class SigmaHoleDockingEngine:
                     # We want to include all interactions for scoring
 
                     # Calculate distance
-                    dx = lig_atom['x'] - rec_atom['x']
-                    dy = lig_atom['y'] - rec_atom['y']
-                    dz = lig_atom['z'] - rec_atom['z']
-                    distance = math.sqrt(dx*dx + dy*dy + dz*dz)
+                    dx = lig_atom["x"] - rec_atom["x"]
+                    dy = lig_atom["y"] - rec_atom["y"]
+                    dz = lig_atom["z"] - rec_atom["z"]
+                    distance = math.sqrt(dx * dx + dy * dy + dz * dz)
 
                     # Track minimum distance for diagnostics
                     if distance < min_distance:
                         min_distance = distance
 
                     # Identify special atoms for sigma-hole diagnostics
-                    lig_is_halogen = lig_atom['element'] in ['F', 'Cl', 'Br', 'I', 'At']
-                    lig_is_dummy = lig_atom.get('is_dummy', False)
-                    rec_is_oxygen = (rec_atom['element'] == 'O')
+                    lig_is_halogen = lig_atom["element"] in ["F", "Cl", "Br", "I", "At"]
+                    lig_is_dummy = lig_atom.get("is_dummy", False)
+                    rec_is_oxygen = rec_atom["element"] == "O"
 
                     if lig_is_halogen:
                         has_halogen = True
@@ -438,8 +454,8 @@ class SigmaHoleDockingEngine:
                     # Lennard-Jones (Van der Waals)
                     # Check if either atom is a dummy atom (virtual charge site)
                     # Dummy atoms have reduced LJ parameters for steric repulsion
-                    is_lig_dummy = lig_atom.get('is_dummy', False)
-                    is_rec_dummy = rec_atom.get('is_dummy', False)
+                    is_lig_dummy = lig_atom.get("is_dummy", False)
+                    is_rec_dummy = rec_atom.get("is_dummy", False)
 
                     if is_lig_dummy or is_rec_dummy:
                         # Dummy atoms need steric repulsion to prevent receptor atoms
@@ -447,7 +463,7 @@ class SigmaHoleDockingEngine:
                         epsilon, sigma = 0.02, 1.2
                     else:
                         epsilon, sigma = self._get_lj_parameters(
-                            lig_atom['element'], rec_atom['element']
+                            lig_atom["element"], rec_atom["element"]
                         )
 
                     # Prevent division by zero or excessively small distances
@@ -457,7 +473,7 @@ class SigmaHoleDockingEngine:
 
                     if distance > 0:
                         lj_ratio = sigma / distance
-                        lj_term = lj_ratio ** 6
+                        lj_term = lj_ratio**6
                         lj_energy = 4.0 * epsilon * (lj_term * lj_term - lj_term)
                         # Cap per-pair LJ repulsion to prevent energy explosion from overlapping atoms
                         if lj_energy > 10.0:
@@ -476,18 +492,26 @@ class SigmaHoleDockingEngine:
 
                         if lig_atom is halogen_atom:
                             # Halogen-acceptor: suppress in sigma-hole direction
-                            angle = self._compute_cx_acceptor_angle(halogen_atom, rec_atom, ligand_atoms)
+                            angle = self._compute_cx_acceptor_angle(
+                                halogen_atom, rec_atom, ligand_atoms
+                            )
                             charge_factor = self._halogen_acceptor_charge_scale(angle)
                         elif bonded_carbon is not None and lig_atom is bonded_carbon:
                             # Bonded carbon-acceptor: suppress in sigma-hole direction
-                            angle = self._compute_cx_acceptor_angle(halogen_atom, rec_atom, ligand_atoms)
+                            angle = self._compute_cx_acceptor_angle(
+                                halogen_atom, rec_atom, ligand_atoms
+                            )
                             charge_factor = self._bonded_carbon_charge_scale(angle)
                         elif is_lig_dummy:
                             # Dummy atom: only interact with electronegative acceptors
                             charge_factor = self._dummy_acceptor_charge_scale(rec_atom["element"])
 
-                        coulomb_energy = (self.k_coulomb * lig_atom["charge"] * rec_atom["charge"]
-                            / (epsilon_r * distance)) * charge_factor
+                        coulomb_energy = (
+                            self.k_coulomb
+                            * lig_atom["charge"]
+                            * rec_atom["charge"]
+                            / (epsilon_r * distance)
+                        ) * charge_factor
                         total_coulomb += coulomb_energy
                     else:
                         coulomb_energy = 0.0
@@ -498,56 +522,74 @@ class SigmaHoleDockingEngine:
                     total_energy += pair_energy
                     pairs_count += 1
             logger.info(f"Physics score: {total_energy:.4f} kcal/mol from {pairs_count} atom pairs")
-            logger.info(f"LJ contribution: {total_lj:.4f} kcal/mol, Coulomb contribution: {total_coulomb:.4f} kcal/mol")
+            logger.info(
+                f"LJ contribution: {total_lj:.4f} kcal/mol, Coulomb contribution: {total_coulomb:.4f} kcal/mol"
+            )
 
             # Log diagnostic distance information
-            if min_distance != float('inf'):
+            if min_distance != float("inf"):
                 logger.debug(f"Minimum ligand-receptor distance: {min_distance:.3f} Å")
-            if has_halogen and has_oxygen and min_halogen_o_distance != float('inf'):
+            if has_halogen and has_oxygen and min_halogen_o_distance != float("inf"):
                 logger.debug(f"Closest halogen-oxygen distance: {min_halogen_o_distance:.3f} Å")
-            if has_dummy and has_oxygen and min_dummy_o_distance != float('inf'):
+            if has_dummy and has_oxygen and min_dummy_o_distance != float("inf"):
                 logger.debug(f"Closest dummy-oxygen distance: {min_dummy_o_distance:.3f} Å")
 
             # Add sanity checks for unrealistic energies
             if total_energy > 0:
-                logger.warning(f"Positive physics-based energy ({total_energy:.4f} kcal/mol) suggests repulsion rather than attraction")
+                logger.warning(
+                    f"Positive physics-based energy ({total_energy:.4f} kcal/mol) suggests repulsion rather than attraction"
+                )
             if abs(total_energy) > 50:
-                logger.warning(f"Unphysically large energy magnitude ({total_energy:.4f} kcal/mol) - check for errors")
+                logger.warning(
+                    f"Unphysically large energy magnitude ({total_energy:.4f} kcal/mol) - check for errors"
+                )
 
             # Cap Lennard-Jones repulsion to prevent energy explosions
             # Cap LJ contribution at 500 kcal/mol to prevent unrealistic energies from steric clashes
             if total_lj > 500.0:
-                logger.warning(f"WARN: Steric clash detected, LJ contribution capped from {total_lj:.4f} to 500.00 kcal/mol")
+                logger.warning(
+                    f"WARN: Steric clash detected, LJ contribution capped from {total_lj:.4f} to 500.00 kcal/mol"
+                )
                 total_lj = 500.0
                 total_energy = total_lj + total_coulomb  # Recalculate total energy with capped LJ
 
             # Additional steric clash detection: check for unphysically close contacts
             # Dummy atoms (H with positive charge) are included with reduced vdW radius
-            vdw_radii = {'H': 1.2, 'HD': 0.6, 'C': 1.7, 'N': 1.55, 'O': 1.52,
-                          'F': 1.57, 'Cl': 1.85, 'Br': 1.93, 'I': 2.08,
-                          'S': 1.80, 'At': 2.02}
+            vdw_radii = {
+                "H": 1.2,
+                "HD": 0.6,
+                "C": 1.7,
+                "N": 1.55,
+                "O": 1.52,
+                "F": 1.57,
+                "Cl": 1.85,
+                "Br": 1.93,
+                "I": 2.08,
+                "S": 1.80,
+                "At": 2.02,
+            }
             clash_scale_factor = 0.6
 
-            min_ratio = float('inf')
+            min_ratio = float("inf")
             min_pair = None
-            min_dist = float('inf')
-            min_threshold = float('inf')
+            min_dist = float("inf")
+            min_threshold = float("inf")
 
             for lig_atom in ligand_atoms:
-                lig_elem = 'HD' if lig_atom.get('is_dummy', False) else lig_atom['element']
+                lig_elem = "HD" if lig_atom.get("is_dummy", False) else lig_atom["element"]
                 for rec_atom in receptor_atoms:
-                    rec_elem = 'HD' if rec_atom.get('is_dummy', False) else rec_atom['element']
-                    dx = lig_atom['x'] - rec_atom['x']
-                    dy = lig_atom['y'] - rec_atom['y']
-                    dz = lig_atom['z'] - rec_atom['z']
-                    dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                    rec_elem = "HD" if rec_atom.get("is_dummy", False) else rec_atom["element"]
+                    dx = lig_atom["x"] - rec_atom["x"]
+                    dy = lig_atom["y"] - rec_atom["y"]
+                    dz = lig_atom["z"] - rec_atom["z"]
+                    dist = math.sqrt(dx * dx + dy * dy + dz * dz)
                     if dist > 0.01:
                         radius_sum = vdw_radii.get(lig_elem, 1.7) + vdw_radii.get(rec_elem, 1.7)
                         threshold_pair = radius_sum * clash_scale_factor
                         ratio = dist / threshold_pair
                         # Skip H-H pairs - they're expected to be close during sigma-hole alignment
                         # and shouldn't contribute to steric penalties in our simplified model
-                        is_hydrogen_pair = (lig_elem == 'H' and rec_elem == 'H')
+                        is_hydrogen_pair = lig_elem == "H" and rec_elem == "H"
                         if ratio < min_ratio and not is_hydrogen_pair:
                             min_ratio = ratio
                             min_pair = (lig_atom, rec_atom)
@@ -558,7 +600,9 @@ class SigmaHoleDockingEngine:
             # Only report clashes for non-hydrogen atom pairs
             if min_pair is not None and min_ratio < 1.0:
                 lig_atom, rec_atom = min_pair
-                logger.warning(f"WARN: Steric clash detected - {lig_atom['element']} and {rec_atom['element']} distance = {min_dist:.3f} Å < threshold {min_threshold:.3f} Å")
+                logger.warning(
+                    f"WARN: Steric clash detected - {lig_atom['element']} and {rec_atom['element']} distance = {min_dist:.3f} Å < threshold {min_threshold:.3f} Å"
+                )
                 # Proportional steric clash penalty: stronger when atoms overlap more
                 # For sigma-hole models, penalty is small since the focus is on electrostatic attraction
                 overlap = 1.0 - min_ratio
@@ -570,30 +614,50 @@ class SigmaHoleDockingEngine:
             # Check if energy calculation resulted in NaN (indicating failure upstream)
             if not np.isfinite(total_energy):
                 logger.error(f"Physics-based scoring resulted in non-finite energy: {total_energy}")
-                return (float('nan'), False)  # (energy, steric_clash_detected)
+                return (float("nan"), steric_clash_detected)  # (energy, steric_clash_detected)
 
             # Ensure final binding energies stay in physically plausible range
             # For gas-phase sigma-hole interactions, typical range is -0.5 to -30 kcal/mol
             # Cap extreme values to prevent outliers
             if total_energy < -100.0:  # Unphysically strong binding
-                logger.warning(f"Capping unphysically strong binding energy from {total_energy:.4f} to -100.00 kcal/mol")
+                logger.warning(
+                    f"Capping unphysically strong binding energy from {total_energy:.4f} to -100.00 kcal/mol"
+                )
                 total_energy = -100.0
             elif total_energy > 50.0:  # Unphysically repulsive
-                logger.warning(f"Capping unphysically repulsive energy from {total_energy:.4f} to 50.00 kcal/mol")
+                logger.warning(
+                    f"Capping unphysically repulsive energy from {total_energy:.4f} to 50.00 kcal/mol"
+                )
                 total_energy = 50.0
 
-            import sys; print(f'[FINAL] total={total_energy:.4f} lj={total_lj:.4f} coul={total_coulomb:.4f} pairs={pairs_count}', file=sys.stderr)
+            import sys
+
+            print(
+                f"[FINAL] total={total_energy:.4f} lj={total_lj:.4f} coul={total_coulomb:.4f} pairs={pairs_count}",
+                file=sys.stderr,
+            )
             return (total_energy, True)  # (energy, success)
         except Exception as e:
-            import traceback; traceback.print_exc()
-            logger.error(f"Error in physics-based scoring: {e}")
-            return (float('nan'), False)
+            import traceback
 
-    def run_vina_docking(self, receptor_pdbqt: str, ligand_pdbqt: str,
-                        scoring: str = 'vinardo', exhaustiveness: int = 8,
-                        num_modes: int = 9,
-                        center_x: Optional[float] = None, center_y: Optional[float] = None, center_z: Optional[float] = None,
-                        size_x: Optional[float] = None, size_y: Optional[float] = None, size_z: Optional[float] = None) -> Tuple[Optional[float], Optional[str]]:
+            traceback.print_exc()
+            logger.error(f"Error in physics-based scoring: {e}")
+            return (float("nan"), False)
+
+    def run_vina_docking(
+        self,
+        receptor_pdbqt: str,
+        ligand_pdbqt: str,
+        scoring: str = "vinardo",
+        exhaustiveness: int = 8,
+        num_modes: int = 9,
+        center_x: Optional[float] = None,
+        center_y: Optional[float] = None,
+        center_z: Optional[float] = None,
+        size_x: Optional[float] = None,
+        size_y: Optional[float] = None,
+        size_z: Optional[float] = None,
+    ) -> Tuple[Optional[float], Optional[str]]:
         """
         Run AutoDock Vina docking.
 
@@ -617,25 +681,32 @@ class SigmaHoleDockingEngine:
 
                 # Build Vina command
                 cmd = [
-                    'vina',
-                    '--receptor', receptor_pdbqt,
-                    '--ligand', ligand_pdbqt,
-                    '--out', output_pdbqt,
-                    '--log', log_file,
-                    '--scoring', scoring,
-                    '--exhaustiveness', str(exhaustiveness),
-                    '--num_modes', str(num_modes)
+                    "vina",
+                    "--receptor",
+                    receptor_pdbqt,
+                    "--ligand",
+                    ligand_pdbqt,
+                    "--out",
+                    output_pdbqt,
+                    "--log",
+                    log_file,
+                    "--scoring",
+                    scoring,
+                    "--exhaustiveness",
+                    str(exhaustiveness),
+                    "--num_modes",
+                    str(num_modes),
                 ]
 
                 # Add grid box parameters if provided
                 if center_x is not None and center_y is not None and center_z is not None:
-                    cmd.extend(['--center_x', str(center_x)])
-                    cmd.extend(['--center_y', str(center_y)])
-                    cmd.extend(['--center_z', str(center_z)])
+                    cmd.extend(["--center_x", str(center_x)])
+                    cmd.extend(["--center_y", str(center_y)])
+                    cmd.extend(["--center_z", str(center_z)])
                 if size_x is not None and size_y is not None and size_z is not None:
-                    cmd.extend(['--size_x', str(size_x)])
-                    cmd.extend(['--size_y', str(size_y)])
-                    cmd.extend(['--size_z', str(size_z)])
+                    cmd.extend(["--size_x", str(size_x)])
+                    cmd.extend(["--size_y", str(size_y)])
+                    cmd.extend(["--size_z", str(size_z)])
 
                 logger.debug(f"Running Vina command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -658,17 +729,28 @@ class SigmaHoleDockingEngine:
             logger.error("Vina docking timed out after 120 seconds")
             return None, "Vina timeout"
         except FileNotFoundError:
-            logger.error("Vina not found. Please install Vina or use Smina. Check that 'vina' is in your PATH.")
+            logger.error(
+                "Vina not found. Please install Vina or use Smina. Check that 'vina' is in your PATH."
+            )
             return None, "Vina executable not found"
         except Exception as e:
             logger.error(f"Error running Vina docking: {e}", exc_info=True)
             return None, f"Docking error: {str(e)}"
 
-    def run_smina_docking(self, receptor_pdbqt: str, ligand_pdbqt: str,
-                         scoring: str = 'vinardo', exhaustiveness: int = 8,
-                         num_modes: int = 9,
-                         center_x: Optional[float] = None, center_y: Optional[float] = None, center_z: Optional[float] = None,
-                         size_x: Optional[float] = None, size_y: Optional[float] = None, size_z: Optional[float] = None) -> Tuple[Optional[float], Optional[str]]:
+    def run_smina_docking(
+        self,
+        receptor_pdbqt: str,
+        ligand_pdbqt: str,
+        scoring: str = "vinardo",
+        exhaustiveness: int = 8,
+        num_modes: int = 9,
+        center_x: Optional[float] = None,
+        center_y: Optional[float] = None,
+        center_z: Optional[float] = None,
+        size_x: Optional[float] = None,
+        size_y: Optional[float] = None,
+        size_z: Optional[float] = None,
+    ) -> Tuple[Optional[float], Optional[str]]:
         """
         Run Smina docking (often better than Vina for custom scoring).
 
@@ -686,10 +768,12 @@ class SigmaHoleDockingEngine:
         """
         try:
             # Check if smina is available
-            subprocess.run(['smina', '--help'], capture_output=True, timeout=5)
+            subprocess.run(["smina", "--help"], capture_output=True, timeout=5)
         except (FileNotFoundError, subprocess.TimeoutExpired):
             logger.warning("Smina not found, falling back to Vina")
-            return self.run_vina_docking(receptor_pdbqt, ligand_pdbqt, scoring, exhaustiveness, num_modes)
+            return self.run_vina_docking(
+                receptor_pdbqt, ligand_pdbqt, scoring, exhaustiveness, num_modes
+            )
 
         try:
             # Create temporary directory for output
@@ -699,25 +783,32 @@ class SigmaHoleDockingEngine:
 
                 # Build Smina command
                 cmd = [
-                    'smina',
-                    '--receptor', receptor_pdbqt,
-                    '--ligand', ligand_pdbqt,
-                    '--out', output_pdbqt,
-                    '--log', log_file,
-                    '--scoring', scoring,
-                    '--exhaustiveness', str(exhaustiveness),
-                    '--num_modes', str(num_modes)
+                    "smina",
+                    "--receptor",
+                    receptor_pdbqt,
+                    "--ligand",
+                    ligand_pdbqt,
+                    "--out",
+                    output_pdbqt,
+                    "--log",
+                    log_file,
+                    "--scoring",
+                    scoring,
+                    "--exhaustiveness",
+                    str(exhaustiveness),
+                    "--num_modes",
+                    str(num_modes),
                 ]
 
                 # Add grid box parameters if provided
                 if center_x is not None and center_y is not None and center_z is not None:
-                    cmd.extend(['--center_x', str(center_x)])
-                    cmd.extend(['--center_y', str(center_y)])
-                    cmd.extend(['--center_z', str(center_z)])
+                    cmd.extend(["--center_x", str(center_x)])
+                    cmd.extend(["--center_y", str(center_y)])
+                    cmd.extend(["--center_z", str(center_z)])
                 if size_x is not None and size_y is not None and size_z is not None:
-                    cmd.extend(['--size_x', str(size_x)])
-                    cmd.extend(['--size_y', str(size_y)])
-                    cmd.extend(['--size_z', str(size_z)])
+                    cmd.extend(["--size_x", str(size_x)])
+                    cmd.extend(["--size_y", str(size_y)])
+                    cmd.extend(["--size_z", str(size_z)])
 
                 logger.debug(f"Running Smina command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -754,12 +845,12 @@ class SigmaHoleDockingEngine:
             Best affinity (kcal/mol) or None if not found
         """
         try:
-            with open(log_file, 'r') as f:
+            with open(log_file, "r") as f:
                 for line in f:
-                    if 'Writing output' in line or 'Refined' in line:
+                    if "Writing output" in line or "Refined" in line:
                         # Look for affinity in docking output
                         continue
-                    if 'Affinity:' in line:
+                    if "Affinity:" in line:
                         # Format: "Affinity: -7.52 (kcal/mol)"
                         parts = line.split()
                         if len(parts) >= 2:
@@ -767,7 +858,7 @@ class SigmaHoleDockingEngine:
                                 return float(parts[1])
                             except ValueError:
                                 continue
-                    elif 'REMARK   Vina Result:' in line:
+                    elif "REMARK   Vina Result:" in line:
                         # Alternative format in some versions
                         parts = line.split()
                         if len(parts) > 3:
@@ -791,7 +882,9 @@ class SigmaHoleDockingEngine:
         # Use the shared pdbqt_io module for parsing
         return pdbqt_io.parse_pdbqt(pdbqt_path)
 
-    def compute_receptor_center(self, receptor_pdbqt: str) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    def compute_receptor_center(
+        self, receptor_pdbqt: str
+    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
         """
         Compute the geometric center of a receptor from its PDBQT file.
 
@@ -806,7 +899,9 @@ class SigmaHoleDockingEngine:
             # Parse the PDBQT file first
             receptor_atoms = self._parse_pdbqt(receptor_pdbqt)
             if not receptor_atoms:
-                logger.error(f"Failed to parse receptor PDBQT file for center computation: {receptor_pdbqt}")
+                logger.error(
+                    f"Failed to parse receptor PDBQT file for center computation: {receptor_pdbqt}"
+                )
                 return None, None, None
 
             # Compute geometric center using the shared function
@@ -816,8 +911,7 @@ class SigmaHoleDockingEngine:
             logger.error(f"Error computing receptor center: {e}")
             return None, None, None
 
-    def score_only(self, receptor_pdbqt: str, ligand_pdbqt: str,
-                  method: str = 'auto') -> float:
+    def score_only(self, receptor_pdbqt: str, ligand_pdbqt: str, method: str = "auto") -> float:
         """
         Calculate binding energy using score_only mode.
 
@@ -830,31 +924,29 @@ class SigmaHoleDockingEngine:
             Binding energy in kcal/mol
         """
         # Try physics-based first if requested or as reliable fallback
-        if method == 'physics' or (method == 'auto' and self.use_physics_fallback):
+        if method == "physics" or (method == "auto" and self.use_physics_fallback):
             logger.info("Using physics-based scoring")
             energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
             return energy
 
         # Try Vina/Smina scoring
-        if method in ['auto', 'vinardo', 'ad4', 'vina']:
-            scoring = method if method != 'auto' else 'vinardo'  # Default to vinardo for auto
+        if method in ["auto", "vinardo", "ad4", "vina"]:
+            scoring = method if method != "auto" else "vinardo"  # Default to vinardo for auto
             affinity, _ = self.run_vina_docking(
-                receptor_pdbqt, ligand_pdbqt,
+                receptor_pdbqt,
+                ligand_pdbqt,
                 scoring=scoring,
                 exhaustiveness=8,
-                num_modes=1  # Just need one mode for scoring
+                num_modes=1,  # Just need one mode for scoring
             )
             if affinity is not None:
                 return affinity
             logger.warning(f"Vina {scoring} scoring failed or returned None")
 
         # Try Smina
-        if method in ['auto', 'smina']:
+        if method in ["auto", "smina"]:
             affinity, _ = self.run_smina_docking(
-                receptor_pdbqt, ligand_pdbqt,
-                scoring='vinardo',
-                exhaustiveness=8,
-                num_modes=1
+                receptor_pdbqt, ligand_pdbqt, scoring="vinardo", exhaustiveness=8, num_modes=1
             )
             if affinity is not None:
                 return affinity
@@ -869,12 +961,20 @@ class SigmaHoleDockingEngine:
         logger.error("All scoring methods failed")
         return 0.0
 
-    def dock_and_score(self, receptor_pdbqt: str, ligand_pdbqt: str,
-                      scoring: str = 'vinardo',
-                      exhaustiveness: int = 8,
-                      num_modes: int = 9,
-                      center_x: Optional[float] = None, center_y: Optional[float] = None, center_z: Optional[float] = None,
-                      size_x: Optional[float] = None, size_y: Optional[float] = None, size_z: Optional[float] = None) -> Dict:
+    def dock_and_score(
+        self,
+        receptor_pdbqt: str,
+        ligand_pdbqt: str,
+        scoring: str = "vinardo",
+        exhaustiveness: int = 8,
+        num_modes: int = 9,
+        center_x: Optional[float] = None,
+        center_y: Optional[float] = None,
+        center_z: Optional[float] = None,
+        size_x: Optional[float] = None,
+        size_y: Optional[float] = None,
+        size_z: Optional[float] = None,
+    ) -> Dict:
         """
         Perform docking and return comprehensive results.
 
@@ -891,69 +991,79 @@ class SigmaHoleDockingEngine:
             Dictionary with docking results
         """
         results = {
-            'success': False,
-            'best_affinity': None,
-            'all_affinities': [],
-            'binding_modes': [],
-            'error': None
+            "success": False,
+            "best_affinity": None,
+            "all_affinities": [],
+            "binding_modes": [],
+            "error": None,
         }
 
         # Handle physics-based scoring directly
-        if scoring == 'physics':
+        if scoring == "physics":
             logger.info("Using physics-based scoring")
             physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
-            results['success'] = True
-            results['best_affinity'] = physics_energy
-            results['all_affinities'] = [physics_energy]
-            results['method'] = 'physics'
+            results["success"] = True
+            results["best_affinity"] = physics_energy
+            results["all_affinities"] = [physics_energy]
+            results["method"] = "physics"
             return results
 
         try:
             # Try Vina first
             affinity, output = self.run_vina_docking(
-                receptor_pdbqt, ligand_pdbqt,
+                receptor_pdbqt,
+                ligand_pdbqt,
                 scoring=scoring,
                 exhaustiveness=exhaustiveness,
                 num_modes=num_modes,
-                center_x=center_x, center_y=center_y, center_z=center_z,
-                size_x=size_x, size_y=size_y, size_z=size_z
+                center_x=center_x,
+                center_y=center_y,
+                center_z=center_z,
+                size_x=size_x,
+                size_y=size_y,
+                size_z=size_z,
             )
 
             if affinity is not None:
-                results['success'] = True
-                results['best_affinity'] = affinity
-                results['raw_output'] = output
+                results["success"] = True
+                results["best_affinity"] = affinity
+                results["raw_output"] = output
 
                 # Parse all affinities from output if available
                 affinities = self._parse_all_affinities(output)
                 if affinities:
-                    results['all_affinities'] = affinities
+                    results["all_affinities"] = affinities
                 else:
-                    results['all_affinities'] = [affinity] if affinity is not None else []
+                    results["all_affinities"] = [affinity] if affinity is not None else []
 
                 return results
 
             # If Vina failed, try Smina
             logger.warning("Vina docking failed, trying Smina...")
             affinity, output = self.run_smina_docking(
-                receptor_pdbqt, ligand_pdbqt,
+                receptor_pdbqt,
+                ligand_pdbqt,
                 scoring=scoring,
                 exhaustiveness=exhaustiveness,
                 num_modes=num_modes,
-                center_x=center_x, center_y=center_y, center_z=center_z,
-                size_x=size_x, size_y=size_y, size_z=size_z
+                center_x=center_x,
+                center_y=center_y,
+                center_z=center_z,
+                size_x=size_x,
+                size_y=size_y,
+                size_z=size_z,
             )
 
             if affinity is not None:
-                results['success'] = True
-                results['best_affinity'] = affinity
-                results['raw_output'] = output
+                results["success"] = True
+                results["best_affinity"] = affinity
+                results["raw_output"] = output
 
                 affinities = self._parse_all_affinities(output)
                 if affinities:
-                    results['all_affinities'] = affinities
+                    results["all_affinities"] = affinities
                 else:
-                    results['all_affinities'] = [affinity] if affinity is not None else []
+                    results["all_affinities"] = [affinity] if affinity is not None else []
 
                 return results
 
@@ -962,19 +1072,19 @@ class SigmaHoleDockingEngine:
                 logger.warning("Both Vina and Smina failed, using physics-based scoring")
                 physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
 
-                results['success'] = True
-                results['best_affinity'] = physics_energy
-                results['all_affinities'] = [physics_energy]
-                results['method'] = 'physics_fallback'
+                results["success"] = True
+                results["best_affinity"] = physics_energy
+                results["all_affinities"] = [physics_energy]
+                results["method"] = "physics_fallback"
                 return results
 
             # Everything failed
-            results['error'] = "All docking/scoring methods failed"
+            results["error"] = "All docking/scoring methods failed"
             return results
 
         except Exception as e:
             logger.error(f"Error in dock_and_score: {e}")
-            results['error'] = str(e)
+            results["error"] = str(e)
             return results
 
     def _parse_all_affinities(self, vina_output: str) -> List[float]:
@@ -989,9 +1099,9 @@ class SigmaHoleDockingEngine:
         """
         affinities = []
         try:
-            lines = vina_output.split('\n')
+            lines = vina_output.split("\n")
             for line in lines:
-                if 'mode' in line.lower() and 'affinity' in line.lower():
+                if "mode" in line.lower() and "affinity" in line.lower():
                     # Look for lines like: "  1      -7.52      -7.43      -7.41"
                     parts = line.split()
                     # Look for numeric values that could be affinities
@@ -1008,13 +1118,21 @@ class SigmaHoleDockingEngine:
 
         return affinities
 
-    def batch_score(self, receptor_pdbqt: str, ligand_dir: str,
-                   output_csv: str,
-                   method: str = 'auto',
-                   exhaustiveness: int = 8,
-                   num_modes: int = 9,
-                   center_x: Optional[float] = None, center_y: Optional[float] = None, center_z: Optional[float] = None,
-                   size_x: Optional[float] = None, size_y: Optional[float] = None, size_z: Optional[float] = None) -> pd.DataFrame:
+    def batch_score(
+        self,
+        receptor_pdbqt: str,
+        ligand_dir: str,
+        output_csv: str,
+        method: str = "auto",
+        exhaustiveness: int = 8,
+        num_modes: int = 9,
+        center_x: Optional[float] = None,
+        center_y: Optional[float] = None,
+        center_z: Optional[float] = None,
+        size_x: Optional[float] = None,
+        size_y: Optional[float] = None,
+        size_z: Optional[float] = None,
+    ) -> pd.DataFrame:
         """
         Score multiple ligands against a single receptor with docking.
 
@@ -1034,14 +1152,17 @@ class SigmaHoleDockingEngine:
         results = []
 
         # Get all PDBQT files in ligand directory
-        ligand_files = [f for f in os.listdir(ligand_dir)
-                       if f.endswith('.pdbqt') and os.path.isfile(os.path.join(ligand_dir, f))]
+        ligand_files = [
+            f
+            for f in os.listdir(ligand_dir)
+            if f.endswith(".pdbqt") and os.path.isfile(os.path.join(ligand_dir, f))
+        ]
 
         logger.info(f"Found {len(ligand_files)} ligand files to score")
 
         for ligand_file in ligand_files:
             ligand_path = os.path.join(ligand_dir, ligand_file)
-            ligand_name = ligand_file.replace('_ligand.pdbqt', '').replace('.pdbqt', '')
+            ligand_name = ligand_file.replace("_ligand.pdbqt", "").replace(".pdbqt", "")
 
             try:
                 # Perform actual docking instead of score_only
@@ -1051,43 +1172,63 @@ class SigmaHoleDockingEngine:
                     scoring=method,
                     exhaustiveness=exhaustiveness,
                     num_modes=num_modes,
-                    center_x=center_x, center_y=center_y, center_z=center_z,
-                    size_x=size_x, size_y=size_y, size_z=size_z
+                    center_x=center_x,
+                    center_y=center_y,
+                    center_z=center_z,
+                    size_x=size_x,
+                    size_y=size_y,
+                    size_z=size_z,
                 )
 
-                if docking_results['success']:
-                    affinity = docking_results['best_affinity']
+                if docking_results["success"]:
+                    affinity = docking_results["best_affinity"]
                     steric_clash = False  # No steric clash info from Vina/Smina yet
                     if steric_clash:
                         logger.warning(f"STERIC CLASH detected for {ligand_name} during docking")
                 else:
-                    logger.warning(f"Docking failed for {ligand_name}: {docking_results.get('error', 'Unknown error')}")
+                    logger.warning(
+                        f"Docking failed for {ligand_name}: {docking_results.get('error', 'Unknown error')}"
+                    )
                     # Fallback to physics-based scoring if enabled
                     if self.use_physics_fallback:
-                        affinity, steric_clash = self.calculate_physics_score(ligand_path, receptor_pdbqt)
+                        affinity, steric_clash = self.calculate_physics_score(
+                            ligand_path, receptor_pdbqt
+                        )
                     else:
-                        affinity = float('nan')  # Return NaN instead of 0.0 to avoid silent failures
+                        affinity = float(
+                            "nan"
+                        )  # Return NaN instead of 0.0 to avoid silent failures
                         steric_clash = False
 
                     # Log steric clash detection if applicable
                     if steric_clash:
-                        logger.warning(f"STERIC CLASH detected for {ligand_name} during physics-based fallback scoring")
+                        logger.warning(
+                            f"STERIC CLASH detected for {ligand_name} during physics-based fallback scoring"
+                        )
 
                 # Check for problematic affinity values and log appropriately
                 if not np.isfinite(affinity):
-                    logger.warning(f"Scoring for {ligand_name} produced non-finite result: {affinity}")
+                    logger.warning(
+                        f"Scoring for {ligand_name} produced non-finite result: {affinity}"
+                    )
                 elif affinity == 0.0:
-                    logger.warning(f"Scoring for {ligand_name} returned exactly 0.0 kcal/mol - this may indicate a problem")
+                    logger.warning(
+                        f"Scoring for {ligand_name} returned exactly 0.0 kcal/mol - this may indicate a problem"
+                    )
 
-                results.append({
-                    'compound_id': ligand_name,
-                    'ligand_file': ligand_file,
-                    'binding_energy_kcalmol': affinity,
-                    'scoring_method': method,
-                    'steric_clash': steric_clash
-                })
+                results.append(
+                    {
+                        "compound_id": ligand_name,
+                        "ligand_file": ligand_file,
+                        "binding_energy_kcalmol": affinity,
+                        "scoring_method": method,
+                        "steric_clash": steric_clash,
+                    }
+                )
                 if steric_clash:
-                    logger.warning(f"Result for {ligand_name} marked as STERIC CLASH in final output")
+                    logger.warning(
+                        f"Result for {ligand_name} marked as STERIC CLASH in final output"
+                    )
 
                 if np.isfinite(affinity):
                     logger.debug(f"Scored {ligand_name}: {affinity:.4f} kcal/mol")
@@ -1097,14 +1238,16 @@ class SigmaHoleDockingEngine:
             except Exception as e:
                 logger.error(f"Error scoring {ligand_name}: {e}")
                 # Instead of returning 0.0 silently, return NaN to make the error visible
-                results.append({
-                    'compound_id': ligand_name,
-                    'ligand_file': ligand_file,
-                    'binding_energy_kcalmol': float('nan'),
-                    'scoring_method': method,
-                    'error': str(e),
-                    'steric_clash': False
-                })
+                results.append(
+                    {
+                        "compound_id": ligand_name,
+                        "ligand_file": ligand_file,
+                        "binding_energy_kcalmol": float("nan"),
+                        "scoring_method": method,
+                        "error": str(e),
+                        "steric_clash": False,
+                    }
+                )
 
         # Create DataFrame and save
         df_results = pd.DataFrame(results)
@@ -1112,6 +1255,7 @@ class SigmaHoleDockingEngine:
         logger.info(f"Saved scoring results to {output_csv}")
 
         return df_results
+
 
 def example_usage():
     """Example usage of the docking engine."""
@@ -1135,7 +1279,7 @@ def example_usage():
     # Example 2: Score only method
     print("\n2. Score-only method:")
     if os.path.exists(ligand_file) and os.path.exists(receptor_file):
-        energy = engine.score_only(receptor_file, ligand_file, method='auto')
+        energy = engine.score_only(receptor_file, ligand_file, method="auto")
         print(f"Score-only energy: {energy:.4f} kcal/mol")
     else:
         print("Skipping score-only - files not found")
@@ -1143,10 +1287,10 @@ def example_usage():
     # Example 3: Full docking (will likely fail without Vina/Smina installed)
     print("\n3. Full docking attempt:")
     if os.path.exists(ligand_file) and os.path.exists(receptor_file):
-        results = engine.dock_and_score(receptor_file, ligand_file, scoring='vinardo')
-        if results['success']:
+        results = engine.dock_and_score(receptor_file, ligand_file, scoring="vinardo")
+        if results["success"]:
             print(f"Docking successful! Best affinity: {results['best_affinity']:.4f} kcal/mol")
-            if 'method' in results:
+            if "method" in results:
                 print(f"Method used: {results['method']}")
         else:
             print(f"Docking failed: {results['error']}")
@@ -1154,6 +1298,7 @@ def example_usage():
         print("Skipping docking - files not found")
 
     return engine
+
 
 if __name__ == "__main__":
     example_usage()

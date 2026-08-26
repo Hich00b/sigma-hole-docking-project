@@ -5,17 +5,16 @@ Prepares receptor PDBQT files for sigma-hole docking studies.
 Handles protein/ligand receptor preparation, charge assignment, and PDBQT formatting.
 """
 
-import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
+from typing import List
 import logging
-import subprocess
 import os
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
+
 
 class SigmaHoleReceptorProcessor:
     """
@@ -26,37 +25,44 @@ class SigmaHoleReceptorProcessor:
         """Initialize the receptor processor."""
         pass
 
-
-
     # Electronegativity-based fallback partial charges (Pauling scale)
     # Used when Gasteiger returns NaN (common for iodine-containing molecules)
     _fallback_charges = {
-        'H': 0.05, 'C': -0.10, 'N': -0.30, 'O': -0.40, 'S': -0.15,
-        'F': -0.25, 'Cl': -0.15, 'Br': -0.10, 'I': -0.05, 'At': 0.0,
+        "H": 0.05,
+        "C": -0.10,
+        "N": -0.30,
+        "O": -0.40,
+        "S": -0.15,
+        "F": -0.25,
+        "Cl": -0.15,
+        "Br": -0.10,
+        "I": -0.05,
+        "At": 0.0,
     }
 
     def _fix_nan_charges(self, mol: Chem.Mol) -> None:
         """Replace NaN Gasteiger charges with electronegativity-based fallback values.
-        
+
         RDKit's ComputeGasteigerCharges returns NaN for atoms it can't parameterize
         (especially iodine). This method fills in reasonable fallback charges so the
         PDBQT output has no zero-charge atoms.
         """
         import math
+
         fixed = 0
         for atom in mol.GetAtoms():
-            if atom.HasProp('_GasteigerCharge'):
-                charge = atom.GetDoubleProp('_GasteigerCharge')
+            if atom.HasProp("_GasteigerCharge"):
+                charge = atom.GetDoubleProp("_GasteigerCharge")
                 if math.isnan(charge) or math.isinf(charge):
                     fallback = self._fallback_charges.get(atom.GetSymbol(), 0.0)
-                    atom.SetDoubleProp('_GasteigerCharge', fallback)
+                    atom.SetDoubleProp("_GasteigerCharge", fallback)
                     fixed += 1
         if fixed > 0:
             logger.info(f"Fixed {fixed} NaN/Inf Gasteiger charges with fallback values")
 
-    def prepare_receptor_from_pdb(self, pdb_path: str, output_path: str,
-                                add_hydrogens: bool = True,
-                                optimize: bool = True) -> bool:
+    def prepare_receptor_from_pdb(
+        self, pdb_path: str, output_path: str, add_hydrogens: bool = True, optimize: bool = True
+    ) -> bool:
         """
         Prepare receptor PDBQT from PDB file.
 
@@ -73,7 +79,9 @@ class SigmaHoleReceptorProcessor:
             # Read PDB file - support both ATOM and HETATM records (for OpenBabel compatibility)
             mol = Chem.MolFromPDBFile(pdb_path, removeHs=False)
             if mol is None:
-                logger.error(f"Failed to read PDB file: {pdb_path}. Please ensure the file is in valid PDB format with proper ATOM or HETATM records. Common issues: missing END record, incorrect formatting, or unsupported elements.")
+                logger.error(
+                    f"Failed to read PDB file: {pdb_path}. Please ensure the file is in valid PDB format with proper ATOM or HETATM records. Common issues: missing END record, incorrect formatting, or unsupported elements."
+                )
                 return False
 
             # We keep existing hydrogens from the PDB; do not add extra ones
@@ -90,7 +98,7 @@ class SigmaHoleReceptorProcessor:
             try:
                 AllChem.ComputeGasteigerCharges(mol)
                 self._fix_nan_charges(mol)
-            except:
+            except Exception:
                 logger.warning("Failed to compute Gasteiger charges, using fallback values")
                 self._fix_nan_charges(mol)  # This will set all atoms to fallback charges
 
@@ -101,11 +109,14 @@ class SigmaHoleReceptorProcessor:
             return True
 
         except Exception as e:
-            logger.error(f"Error preparing receptor from PDB {pdb_path}: {e}. Check PDB file format and try again.")
+            logger.error(
+                f"Error preparing receptor from PDB {pdb_path}: {e}. Check PDB file format and try again."
+            )
             return False
-    def prepare_receptor_from_smiles(self, smiles: str, output_path: str,
-                                   add_hydrogens: bool = True,
-                                   optimize: bool = True) -> bool:
+
+    def prepare_receptor_from_smiles(
+        self, smiles: str, output_path: str, add_hydrogens: bool = True, optimize: bool = True
+    ) -> bool:
         """
         Prepare receptor PDBQT from SMILES string.
 
@@ -157,7 +168,6 @@ class SigmaHoleReceptorProcessor:
             mol: RDKit molecule
             output_path: Path to save PDBQT file
         """
-        from rdkit import Chem
 
         conf = mol.GetConformer()
         num_atoms = mol.GetNumAtoms()
@@ -171,30 +181,32 @@ class SigmaHoleReceptorProcessor:
             element = atom.GetSymbol()
             # Get Gasteiger charge if available
             try:
-                charge = atom.GetDoubleProp('_GasteigerCharge')
-            except:
+                charge = atom.GetDoubleProp("_GasteigerCharge")
+            except Exception:
                 charge = 0.0
 
             # Simple atom type mapping (can be improved)
             atom_type = element
-            if element == 'C':
+            if element == "C":
                 # Distinguish between different carbon types if needed
-                atom_type = 'C'
-            elif element == 'O':
-                atom_type = 'OA'  # Carbonyl oxygen
-            elif element == 'N':
-                atom_type = 'N'   # or 'NA', 'NC', etc. depending on context
-            elif element == 'S':
-                atom_type = 'S'
+                atom_type = "C"
+            elif element == "O":
+                atom_type = "OA"  # Carbonyl oxygen
+            elif element == "N":
+                atom_type = "N"  # or 'NA', 'NC', etc. depending on context
+            elif element == "S":
+                atom_type = "S"
 
-            atoms.append({
-                'element': element,
-                'x': pos.x,
-                'y': pos.y,
-                'z': pos.z,
-                'charge': charge,
-                'atom_type': atom_type
-            })
+            atoms.append(
+                {
+                    "element": element,
+                    "x": pos.x,
+                    "y": pos.y,
+                    "z": pos.z,
+                    "charge": charge,
+                    "atom_type": atom_type,
+                }
+            )
 
         # Use shared function to write the basic PDBQT format
         title = "Generated by Sigma Hole Receptor Processor"
@@ -202,7 +214,7 @@ class SigmaHoleReceptorProcessor:
             atoms=atoms,
             output_path=output_path,
             title=title,
-            is_docking=True  # Include ROOT/ENDROOT/TORSDOF sections
+            is_docking=True,  # Include ROOT/ENDROOT/TORSDOF sections
         )
 
         if not success:
@@ -211,21 +223,20 @@ class SigmaHoleReceptorProcessor:
             # Add rotatable bonds count to TORSDOF section
             try:
                 from rdkit.Chem import AllChem
+
                 rotatable_bonds = AllChem.CalcNumRotatableBonds(mol)
-                with open(output_path, 'a') as f:
+                with open(output_path, "a") as f:
                     # Go to end of file and replace the "0\n" we wrote with actual count
-                    import os
-                    file_size = os.path.getsize(output_path)
-                    with open(output_path, 'r+') as f:
+                    with open(output_path, "r+") as f:
                         content = f.read()
                         # Find and replace the rotatable_bonds line (assumes it's the last line)
-                        lines = content.split('\n')
-                        if lines and lines[-1].strip() == '0':
+                        lines = content.split("\n")
+                        if lines and lines[-1].strip() == "0":
                             lines[-1] = str(rotatable_bonds)
                             f.seek(0)
-                            f.write('\n'.join(lines))
+                            f.write("\n".join(lines))
                             f.truncate()
-            except:
+            except Exception:
                 # If we can't compute rotatable bonds, just leave it as 0
                 pass
 
@@ -246,18 +257,21 @@ class SigmaHoleReceptorProcessor:
         """
         try:
             # Use SMILES to generate acetone, then process
-            return self.prepare_receptor_from_smiles("CC(=O)C", output_path,
-                                                     add_hydrogens=True,
-                                                     optimize=True)
+            return self.prepare_receptor_from_smiles(
+                "CC(=O)C", output_path, add_hydrogens=True, optimize=True
+            )
         except Exception as e:
             logger.error(f"Error creating acetone receptor: {e}")
             return False
 
-    def batch_prepare_receptors(self, receptor_df: pd.DataFrame,
-                              output_dir: str,
-                              input_col: str = 'pdb_path',
-                              id_col: str = 'receptor_id',
-                              input_type: str = 'pdb') -> List[str]:
+    def batch_prepare_receptors(
+        self,
+        receptor_df: pd.DataFrame,
+        output_dir: str,
+        input_col: str = "pdb_path",
+        id_col: str = "receptor_id",
+        input_type: str = "pdb",
+    ) -> List[str]:
         """
         Prepare receptor PDBQT files for a batch of receptors.
 
@@ -280,9 +294,9 @@ class SigmaHoleReceptorProcessor:
                 input_data = row[input_col]
                 output_path = os.path.join(output_dir, f"{receptor_id}_receptor.pdbqt")
 
-                if input_type == 'pdb':
+                if input_type == "pdb":
                     success = self.prepare_receptor_from_pdb(input_data, output_path)
-                elif input_type == 'smiles':
+                elif input_type == "smiles":
                     success = self.prepare_receptor_from_smiles(input_data, output_path)
                 else:
                     logger.error(f"Unsupported input_type: {input_type}")
@@ -300,6 +314,7 @@ class SigmaHoleReceptorProcessor:
         logger.info(f"Generated {len(generated_files)} receptor PDBQT files")
         return generated_files
 
+
 def example_usage():
     """Example usage of the receptor processor."""
     processor = SigmaHoleReceptorProcessor()
@@ -311,7 +326,7 @@ def example_usage():
         print("Successfully created acetone_receptor.pdbqt")
         # Show the file
         try:
-            with open("acetone_receptor.pdbqt", 'r') as f:
+            with open("acetone_receptor.pdbqt", "r") as f:
                 content = f.read()
                 print("Acetone receptor PDBQT:")
                 print(content)
@@ -329,6 +344,7 @@ def example_usage():
         print("Failed to create receptor from SMILES")
 
     return success
+
 
 if __name__ == "__main__":
     example_usage()
