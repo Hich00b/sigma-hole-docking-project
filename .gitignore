@@ -86,3 +86,20 @@ ligands/MO-1-SHD_ligand.pdbqt
 sigma_hole_work/charged_compounds.csv
 receptors/receptor_receptor.pdbqt
 sigma_hole_docking_plan.md
+
+# Development/debug files
+debug_*.py
+test_*.py
+!tests/test_*  # Don't ignore actual test suite
+
+# Backup files
+*.backup
+*.bak
+
+
+# Specific development directories
+sigma_hole_work/
+temp/
+
+# Egg-info
+*.egg-info/
