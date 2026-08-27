@@ -4,16 +4,19 @@ Sigma Hole Docking Alignment Module
 Contains molecular alignment functionality for sigma-hole interactions.
 """
 
-import numpy as np
+from __future__ import annotations
+
+import copy
 import logging
 import random
-import copy
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def _find_acceptor_atoms(receptor_atoms: List[Dict]) -> List[Dict]:
+def _find_acceptor_atoms(receptor_atoms: list[dict]) -> list[dict]:
     """
     Find electronegative atoms in receptor that can act as sigma-hole acceptors.
     Priority order: O > N > S > F (based on electronegativity and common sigma-hole interactions)
@@ -45,8 +48,8 @@ def _find_acceptor_atoms(receptor_atoms: List[Dict]) -> List[Dict]:
 
 
 def _align_molecules_for_sigma_hole(
-    ligand_atoms: List[Dict], receptor_atoms: List[Dict]
-) -> List[Dict]:
+    ligand_atoms: list[dict], receptor_atoms: list[dict]
+) -> list[dict]:
     """
     Align ligand for optimal sigma-hole interaction with receptor.
 
@@ -110,8 +113,7 @@ def _align_molecules_for_sigma_hole(
                     + (halogen_atom["y"] - acceptor["y"]) ** 2
                     + (halogen_atom["z"] - acceptor["z"]) ** 2
                 )
-                if dist < min_dist:
-                    min_dist = dist
+                min_dist = min(min_dist, dist)
 
             if min_dist < min_halogen_to_acceptor_dist:
                 min_halogen_to_acceptor_dist = min_dist
@@ -133,8 +135,7 @@ def _align_molecules_for_sigma_hole(
                     + (halogen_atom["y"] - acceptor["y"]) ** 2
                     + (halogen_atom["z"] - acceptor["z"]) ** 2
                 )
-                if dist < min_dist:
-                    min_dist = dist
+                min_dist = min(min_dist, dist)
 
             if min_dist < min_halogen_to_acceptor_dist:
                 min_halogen_to_acceptor_dist = min_dist
@@ -461,8 +462,8 @@ def _align_by_halogen_only(
 
 
 def _find_halogen_and_carbon(
-    ligand_atoms: List[Dict],
-) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
+    ligand_atoms: list[dict],
+) -> list[tuple[Optional[dict], Optional[dict]]]:
     """
     Find halogen atoms and the carbons bonded to them in ligand.
 
@@ -495,7 +496,7 @@ def _find_halogen_and_carbon(
     return pairs
 
 
-def _is_planar_molecule(atoms: List[Dict], tolerance: float = 0.01) -> bool:
+def _is_planar_molecule(atoms: list[dict], tolerance: float = 0.01) -> bool:
     """
     Check if a molecule is planar (all atoms lie in the same plane within tolerance).
 
@@ -518,7 +519,7 @@ def _is_planar_molecule(atoms: List[Dict], tolerance: float = 0.01) -> bool:
     centered_coords = coords - centroid
 
     # Perform SVD
-    U, S, Vt = np.linalg.svd(centered_coords)
+    _U, _S, Vt = np.linalg.svd(centered_coords)
 
     # The normal to the plane is the last row of Vt (corresponding to smallest singular value)
     normal = Vt[-1]
@@ -530,7 +531,7 @@ def _is_planar_molecule(atoms: List[Dict], tolerance: float = 0.01) -> bool:
     return max_deviation < tolerance
 
 
-def _add_planar_offset(atoms: List[Dict], max_offset: float = 0.01) -> List[Dict]:
+def _add_planar_offset(atoms: list[dict], max_offset: float = 0.01) -> list[dict]:
     """
     Add small random Z-offset to break planarity degeneracy.
 

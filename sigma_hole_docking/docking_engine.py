@@ -5,18 +5,19 @@ Handles docking and scoring calculations that properly evaluate
 dummy atom electrostatics for sigma-hole interactions.
 """
 
+from __future__ import annotations
+
+import logging
+import math
+import os
+import subprocess
+import tempfile
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-import logging
-import subprocess
-import os
-import tempfile
-import math
-from . import pdbqt_io
-from . import scoring
-from . import alignment
-from . import pose_optimization
+
+from . import alignment, pdbqt_io, pose_optimization, scoring
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class SigmaHoleDockingEngine:
             ("S", "I"): (0.20, 3.6),
         }
 
-    def _get_lj_parameters(self, atom1: str, atom2: str) -> Tuple[float, float]:
+    def _get_lj_parameters(self, atom1: str, atom2: str) -> tuple[float, float]:
         """
         Get Lennard-Jones parameters for an atom pair.
         Uses Lorentz-Berthelot mixing rules if specific params not available.
@@ -133,7 +134,7 @@ class SigmaHoleDockingEngine:
         # Delegate to scoring module
         return scoring._find_bonded_carbon(halogen_atom, ligand_atoms)
 
-    def _find_acceptor_atoms(self, receptor_atoms: List[Dict]) -> List[Dict]:
+    def _find_acceptor_atoms(self, receptor_atoms: list[dict]) -> list[dict]:
         """
         Find electronegative atoms in receptor that can act as sigma-hole acceptors.
         Priority order: O > N > S > F (based on electronegativity and common sigma-hole interactions)
@@ -148,8 +149,8 @@ class SigmaHoleDockingEngine:
         return alignment._find_acceptor_atoms(receptor_atoms)
 
     def _find_halogen_and_carbon(
-        self, ligand_atoms: List[Dict]
-    ) -> List[Tuple[Optional[Dict], Optional[Dict]]]:
+        self, ligand_atoms: list[dict]
+    ) -> list[tuple[Optional[dict], Optional[dict]]]:
         """
         Find halogen atoms and the carbons bonded to them in ligand.
 
@@ -161,7 +162,7 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._find_halogen_and_carbon(ligand_atoms)
 
-    def _is_planar_molecule(self, atoms: List[Dict], tolerance: float = 0.01) -> bool:
+    def _is_planar_molecule(self, atoms: list[dict], tolerance: float = 0.01) -> bool:
         """
         Check if a molecule is planar (all atoms lie in the same plane within tolerance).
 
@@ -175,7 +176,7 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._is_planar_molecule(atoms, tolerance)
 
-    def _add_planar_offset(self, atoms: List[Dict], max_offset: float = 0.01) -> List[Dict]:
+    def _add_planar_offset(self, atoms: list[dict], max_offset: float = 0.01) -> list[dict]:
         """
         Add small random Z-offset to break planarity degeneracy.
 
@@ -190,8 +191,8 @@ class SigmaHoleDockingEngine:
         return alignment._add_planar_offset(atoms, max_offset)
 
     def _align_molecules_for_sigma_hole(
-        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
-    ) -> List[Dict]:
+        self, ligand_atoms: list[dict], receptor_atoms: list[dict]
+    ) -> list[dict]:
         """
         Align ligand for optimal sigma-hole interaction with receptor.
 
@@ -211,7 +212,7 @@ class SigmaHoleDockingEngine:
         # Delegate to alignment module
         return alignment._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
 
-    def _validate_coordinates(self, atoms: List[Dict], context: str = "") -> bool:
+    def _validate_coordinates(self, atoms: list[dict], context: str = "") -> bool:
         """
         Validate that all coordinates are finite numbers (not NaN or Inf).
 
@@ -226,8 +227,8 @@ class SigmaHoleDockingEngine:
         return pose_optimization._validate_coordinates(atoms, context)
 
     def _local_optimize_pose(
-        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
-    ) -> List[Dict]:
+        self, ligand_atoms: list[dict], receptor_atoms: list[dict]
+    ) -> list[dict]:
         """
         Perform local optimization to refine the sigma-hole pose and find the energy minimum.
 
@@ -246,7 +247,7 @@ class SigmaHoleDockingEngine:
         return pose_optimization._local_optimize_pose(ligand_atoms, receptor_atoms)
 
     def _calculate_pairwise_energy(
-        self, ligand_atoms: List[Dict], receptor_atoms: List[Dict]
+        self, ligand_atoms: list[dict], receptor_atoms: list[dict]
     ) -> float:
         """
         Calculate pairwise energy between ligand and receptor atoms (helper for optimization).
@@ -258,7 +259,7 @@ class SigmaHoleDockingEngine:
 
     def calculate_physics_score(
         self, ligand_pdbqt: str, receptor_pdbqt: str, cutoff_distance: float = 6.0
-    ) -> Tuple[float, bool]:
+    ) -> tuple[float, bool]:
         """
         Calculate interaction energy using physics-based scoring (LJ + Coulomb).
 
@@ -418,8 +419,7 @@ class SigmaHoleDockingEngine:
                     distance = math.sqrt(dx * dx + dy * dy + dz * dz)
 
                     # Track minimum distance for diagnostics
-                    if distance < min_distance:
-                        min_distance = distance
+                    min_distance = min(min_distance, distance)
 
                     # Identify special atoms for sigma-hole diagnostics
                     lig_is_halogen = lig_atom["element"] in ["F", "Cl", "Br", "I", "At"]
@@ -468,16 +468,14 @@ class SigmaHoleDockingEngine:
 
                     # Prevent division by zero or excessively small distances
                     min_dist_clamp = max(0.6 * sigma, 0.5)
-                    if distance < min_dist_clamp:
-                        distance = min_dist_clamp
+                    distance = max(distance, min_dist_clamp)
 
                     if distance > 0:
                         lj_ratio = sigma / distance
                         lj_term = lj_ratio**6
                         lj_energy = 4.0 * epsilon * (lj_term * lj_term - lj_term)
                         # Cap per-pair LJ repulsion to prevent energy explosion from overlapping atoms
-                        if lj_energy > 10.0:
-                            lj_energy = 10.0
+                        lj_energy = min(lj_energy, 10.0)
                     else:
                         lj_energy = 0.0
                     total_lj += lj_energy
@@ -638,10 +636,7 @@ class SigmaHoleDockingEngine:
             )
             return (total_energy, True)  # (energy, success)
         except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-            logger.error(f"Error in physics-based scoring: {e}")
+            logger.exception(f"Error in physics-based scoring: {e}")
             return (float("nan"), False)
 
     def run_vina_docking(
@@ -709,7 +704,9 @@ class SigmaHoleDockingEngine:
                     cmd.extend(["--size_z", str(size_z)])
 
                 logger.debug(f"Running Vina command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=120, check=False
+                )
 
                 if result.returncode != 0:
                     logger.error(f"Vina failed: {result.stderr}")
@@ -734,8 +731,8 @@ class SigmaHoleDockingEngine:
             )
             return None, "Vina executable not found"
         except Exception as e:
-            logger.error(f"Error running Vina docking: {e}", exc_info=True)
-            return None, f"Docking error: {str(e)}"
+            logger.exception(f"Error running Vina docking: {e}")
+            return None, f"Docking error: {e!s}"
 
     def run_smina_docking(
         self,
@@ -811,7 +808,9 @@ class SigmaHoleDockingEngine:
                     cmd.extend(["--size_z", str(size_z)])
 
                 logger.debug(f"Running Smina command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=120, check=False
+                )
 
                 if result.returncode != 0:
                     logger.error(f"Smina failed: {result.stderr}")
@@ -831,8 +830,8 @@ class SigmaHoleDockingEngine:
             logger.error("Smina docking timed out after 120 seconds")
             return None, "Smina timeout"
         except Exception as e:
-            logger.error(f"Error running Smina docking: {e}", exc_info=True)
-            return None, f"Docking error: {str(e)}"
+            logger.exception(f"Error running Smina docking: {e}")
+            return None, f"Docking error: {e!s}"
 
     def _parse_vina_affinity(self, log_file: str) -> Optional[float]:
         """

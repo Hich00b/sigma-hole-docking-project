@@ -5,9 +5,12 @@ Calculates dummy atom charge from Vmax values using Coulomb's law for
 sigma-hole (extra point) method in halogen bonding.
 """
 
-import pandas as pd
-from typing import Optional
+from __future__ import annotations
+
 import logging
+from typing import Optional
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
