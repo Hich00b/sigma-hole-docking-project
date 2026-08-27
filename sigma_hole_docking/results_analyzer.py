@@ -858,7 +858,7 @@ class SigmaHoleResultsAnalyzer:
             return figures
 
         except Exception as e:
-            logger.error(f"Error generating publication figures: {e}")
+            logger.exception(f"Error generating publication figures: {e}")
             return {}
 
 
@@ -933,7 +933,7 @@ def example_usage():
         for report_type, file_path in report_files.items():
             print(f"  {report_type}: {file_path}")
     except Exception as e:
-        print(f"Report generation failed: {e}")
+        logger.exception(f"Report generation failed: {e}")
 
     # Cleanup
     try:
@@ -943,8 +943,7 @@ def example_usage():
         if os.path.exists("example_reports"):
             shutil.rmtree("example_reports")
     except Exception as e:
-        logger.debug(f"Cleanup failed: {e}")
-        pass
+        logger.exception(f"Cleanup failed: {e}")
 
     return analyzer
 
