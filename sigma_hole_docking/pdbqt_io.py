@@ -32,12 +32,11 @@ def parse_pdbqt(pdbqt_path: str) -> List[Dict]:
                     # PDBQT format:
                     # ATOM      1  I   LIG B   1       0.000   0.000   0.000  0.00  0.00    -0.100 I
                     parts = line.split()
+                    # Handle both extended format (with residue fields) and compact format (test format)
                     if len(parts) >= 12:
+                        # Extended format: ATOM index element resName chainID resSeq x y z occ charge atomType
                         try:
                             atom_index = int(parts[1])
-                            # In PDBQT format:
-                            # parts[2] = atom name (often the element symbol, e.g., "C", "O", "I")
-                            # parts[12] = atom type (can be different, e.g., "I3" for sigma-hole iodine)
                             element = parts[2]  # Element symbol is at index 2 (3rd field)
                             atom_type = (
                                 parts[12] if len(parts) > 12 else element
@@ -55,25 +54,34 @@ def parse_pdbqt(pdbqt_path: str) -> List[Dict]:
                             x = float(parts[6])
                             y = float(parts[7])
                             z = float(parts[8])
-                            # occupancy = float(parts[9])
-                            # temperature_factor = float(parts[10])  # Usually 0.00 in PDBQT
-                            charge = float(parts[11])  # Charge is at index 11 in PDBQT format
-                            # Determine if this is a dummy atom (virtual charge site)
-                            # Dummy atoms often have atom_type starting with 'EP' or have element H with positive charge
-                            is_dummy = atom_type == "EP"
+                            charge = float(parts[11])  # Charge is at index 11 in extended PDBQT format
+                        except (ValueError, IndexError):
+                            parsing_errors += 1
+                            if parsing_errors <= 5:  # Limit error messages to avoid spam
+                                logger.debug(f"Could not parse ATOM/HETATM line {line_num}: {line}")
+                            continue
+                    elif len(parts) >= 10:
+                        # Compact format: ATOM index element x y z occ charge atomType (used in tests)
+                        try:
+                            atom_index = int(parts[1])
+                            element = parts[2]  # Element symbol is at index 2 (3rd field)
+                            atom_type = (
+                                parts[9] if len(parts) > 9 else element
+                            )  # Atom type is at index 9 (10th field) if present
 
-                            atoms.append(
-                                {
-                                    "index": atom_index,
-                                    "element": element,
-                                    "x": x,
-                                    "y": y,
-                                    "z": z,
-                                    "charge": charge,
-                                    "atom_type": atom_type,
-                                    "is_dummy": is_dummy,
-                                }
-                            )
+                            # Normalize halogen element names (handle cases like "CL" -> "Cl")
+                            if element.upper() == "CL":
+                                element = "Cl"
+                            elif element.upper() == "BR":
+                                element = "Br"
+                            elif element.upper() == "I":
+                                element = "I"  # Already correct, but explicit for clarity
+                            # Note: Hydrogen "H" doesn't need normalization
+
+                            x = float(parts[3])
+                            y = float(parts[4])
+                            z = float(parts[5])
+                            charge = float(parts[8])  # Charge is at index 8 in compact PDBQT format
                         except (ValueError, IndexError):
                             parsing_errors += 1
                             if parsing_errors <= 5:  # Limit error messages to avoid spam
@@ -85,6 +93,24 @@ def parse_pdbqt(pdbqt_path: str) -> List[Dict]:
                             logger.debug(
                                 f"Malformed ATOM/HETATM line {line_num} (too few fields): {line}"
                             )
+                            continue
+
+                    # Determine if this is a dummy atom (virtual charge site)
+                    # Dummy atoms often have atom_type starting with 'EP' or have element H with positive charge
+                    is_dummy = atom_type == "EP"
+
+                    atoms.append(
+                        {
+                            "index": atom_index,
+                            "element": element,
+                            "x": x,
+                            "y": y,
+                            "z": z,
+                            "charge": charge,
+                            "atom_type": atom_type,
+                            "is_dummy": is_dummy,
+                        }
+                    )
 
         if parsing_errors > 5:
             logger.debug(f"... and {parsing_errors - 5} more parsing errors")
@@ -268,7 +294,7 @@ def write_pdbqt_from_mol(
                     )
                 else:
                     f.write(
-                        f"ATOM  {i + 1:4d} {element:<2s}      {pos.x:8.3f}{pos.y:8.3f}{pos.z:8.3f} {atom_charge:7.4f}\n"
+                        f"ATOM  {i + 1:4d} {element:<2s} UNK X 1 {pos.x:8.3f} {pos.y:8.3f} {pos.z:8.3f} {'0.00':<6} {'0.00':<6} {atom_charge:7.4f} {atom_type:2s}\n"
                     )
 
             if is_docking:

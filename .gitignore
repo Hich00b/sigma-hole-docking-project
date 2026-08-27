@@ -86,6 +86,13 @@ ligands/MO-1-SHD_ligand.pdbqt
 sigma_hole_work/charged_compounds.csv
 receptors/receptor_receptor.pdbqt
 sigma_hole_docking_plan.md
+# Additional ignore patterns for data files
+*.pdbqt
+*.pdb
+*.sdf
+*.mol2
+ligands/
+receptors/
 
 # Development/debug files
 debug_*.py
