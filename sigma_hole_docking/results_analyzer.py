@@ -942,7 +942,8 @@ def example_usage():
 
         if os.path.exists("example_reports"):
             shutil.rmtree("example_reports")
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Cleanup failed: {e}")
         pass
 
     return analyzer

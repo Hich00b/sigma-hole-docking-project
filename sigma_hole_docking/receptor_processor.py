@@ -98,8 +98,8 @@ class SigmaHoleReceptorProcessor:
             try:
                 AllChem.ComputeGasteigerCharges(mol)
                 self._fix_nan_charges(mol)
-            except Exception:
-                logger.warning("Failed to compute Gasteiger charges, using fallback values")
+            except Exception as e:
+                logger.warning(f"Failed to compute Gasteiger charges: {e}, using fallback values")
                 self._fix_nan_charges(mol)  # This will set all atoms to fallback charges
 
             # Create PDBQT manually for better control over atom types and charges
@@ -182,7 +182,10 @@ class SigmaHoleReceptorProcessor:
             # Get Gasteiger charge if available
             try:
                 charge = atom.GetDoubleProp("_GasteigerCharge")
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    f"Could not get Gasteiger charge for atom {atom.GetIdx()}: {e}, defaulting to 0.0"
+                )
                 charge = 0.0
 
             # Simple atom type mapping (can be improved)
@@ -236,7 +239,8 @@ class SigmaHoleReceptorProcessor:
                             f.seek(0)
                             f.write("\n".join(lines))
                             f.truncate()
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Could not compute rotatable bonds: {e}, leaving as 0")
                 # If we can't compute rotatable bonds, just leave it as 0
                 pass
 

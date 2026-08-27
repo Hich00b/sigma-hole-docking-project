@@ -17,8 +17,8 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
-from datetime import datetime
 
 # Import our custom modules
 from .charge_calculator import SigmaHoleChargeCalculator
@@ -535,7 +535,7 @@ class SigmaHolePipeline:
             will be generated for comparison. Otherwise, sigma-hole ligands with dummy
             atoms will be generated.
         """
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
         logger.info("Starting Sigma Hole Molecular Docking Pipeline")
         logger.info("=" * 60)
 
@@ -595,7 +595,7 @@ class SigmaHolePipeline:
             )
 
             # Compile final results
-            end_time = datetime.now()
+            end_time = datetime.now(timezone.utc)
             elapsed_time = end_time - start_time
 
             # Save validation results if validation was performed and results exist
@@ -650,8 +650,12 @@ class SigmaHolePipeline:
             return pipeline_results
 
         except Exception as e:
-            logger.error(f"Pipeline failed: {e}", exc_info=True)
-            return {"success": False, "error": str(e), "elapsed_time": datetime.now() - start_time}
+            logger.exception(f"Pipeline failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "elapsed_time": datetime.now(timezone.utc) - start_time,
+            }
 
 
 def create_example_input() -> str:

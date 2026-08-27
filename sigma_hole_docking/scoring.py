@@ -88,15 +88,13 @@ def _calculate_pairwise_energy(ligand_atoms: list[dict], receptor_atoms: list[di
 
             # Prevent division by zero or excessively small distances
             min_dist_clamp = max(0.6 * sigma, 0.5)
-            if distance < min_dist_clamp:
-                distance = min_dist_clamp
+            distance = max(distance, min_dist_clamp)
 
             if distance > 0:
                 lj_ratio = sigma / distance
                 lj_term = lj_ratio**6
                 lj_energy = 4.0 * epsilon * (lj_term * lj_term - lj_term)
-                if lj_energy > 10.0:
-                    lj_energy = 10.0
+                lj_energy = min(lj_energy, 10.0)
             else:
                 lj_energy = 0.0
 
