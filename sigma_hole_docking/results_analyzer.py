@@ -15,6 +15,7 @@ import os
 from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
+# CI trigger comment - do not remove
 
 
 class SigmaHoleResultsAnalyzer:
