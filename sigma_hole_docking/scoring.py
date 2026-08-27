@@ -4,15 +4,17 @@ Sigma Hole Docking Scoring Module
 Contains physics-based scoring functionality for sigma-hole interactions.
 """
 
-import numpy as np
-import math
-from typing import Dict, List, Tuple
+from __future__ import annotations
+
 import logging
+import math
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> float:
+def _calculate_pairwise_energy(ligand_atoms: list[dict], receptor_atoms: list[dict]) -> float:
     """
     Calculate pairwise energy between ligand and receptor atoms (helper for optimization).
     Uses the same physics as calculate_physics_score but without alignment/separation.
@@ -135,7 +137,7 @@ def _calculate_pairwise_energy(ligand_atoms: List[Dict], receptor_atoms: List[Di
     return total_energy
 
 
-def _get_lj_parameters(atom1: str, atom2: str) -> Tuple[float, float]:
+def _get_lj_parameters(atom1: str, atom2: str) -> tuple[float, float]:
     """
     Get Lennard-Jones parameters for an atom pair.
     Uses Lorentz-Berthelot mixing rules if specific params not available.
