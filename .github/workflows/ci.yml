@@ -1,57 +1,21 @@
 name: CI
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
+on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
-
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev]
-        pip install pytest pytest-cov
-
-    - name: Lint with ruff
-      run: |
-        ruff check sigma_hole_docking/ tests/
-
-    - name: Format check with black
-      run: |
-        black --check --diff sigma_hole_docking/ tests/
-
-    - name: Run tests
-      run: |
-        pytest tests/ -v --cov=sigma_hole_docking --cov-report=xml --cov-report=term-missing
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-    - name: Build package
-      run: |
-        python -m pip install build
-        python -m build --sdist --wheel .
-
-    - name: Check package metadata
-      run: |
-        twine check dist/*
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: ruff check sigma_hole_docking tests
+      - run: ruff format --check sigma_hole_docking tests
+      - run: pytest --cov=sigma_hole_docking --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml

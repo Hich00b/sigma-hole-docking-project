@@ -54,7 +54,9 @@ def parse_pdbqt(pdbqt_path: str) -> List[Dict]:
                             x = float(parts[6])
                             y = float(parts[7])
                             z = float(parts[8])
-                            charge = float(parts[11])  # Charge is at index 11 in extended PDBQT format
+                            charge = float(
+                                parts[11]
+                            )  # Charge is at index 11 in extended PDBQT format
                         except (ValueError, IndexError):
                             parsing_errors += 1
                             if parsing_errors <= 5:  # Limit error messages to avoid spam
