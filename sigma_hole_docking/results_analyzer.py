@@ -16,6 +16,7 @@ from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
 # CI trigger comment - do not remove
+# CI trigger: verify fixes for TRY401 and F841 errors
 
 
 class SigmaHoleResultsAnalyzer:
