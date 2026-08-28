@@ -764,7 +764,7 @@ class SigmaHoleDockingEngine:
         """
         try:
             # Check if smina is available
-            subprocess.run(["smina", "--help"], capture_output=True, timeout=5)
+            subprocess.run(["smina", "--help"], capture_output=True, timeout=5, check=False)
         except (FileNotFoundError, subprocess.TimeoutExpired):
             logger.warning("Smina not found, falling back to Vina")
             return self.run_vina_docking(
@@ -864,8 +864,8 @@ class SigmaHoleDockingEngine:
                                 return float(parts[3])
                             except ValueError:
                                 continue
-        except Exception as e:
-            logger.debug(f"Error parsing affinity from {log_file}: {e}")
+        except OSError as e:
+            logger.debug("Error parsing affinity from %s: %s", log_file, e)
 
         return None
 
@@ -905,8 +905,8 @@ class SigmaHoleDockingEngine:
             # Compute geometric center using the shared function
             center_x, center_y, center_z = pdbqt_io.compute_geometric_center(receptor_atoms)
             return center_x, center_y, center_z
-        except Exception as e:
-            logger.error(f"Error computing receptor center: {e}")
+        except OSError as e:
+            logger.error("Error computing receptor center: %s", e)
             return None, None, None
 
     def score_only(self, receptor_pdbqt: str, ligand_pdbqt: str, method: str = "auto") -> float:

@@ -5,13 +5,16 @@ Creates PDBQT files with dummy atoms positioned for sigma-hole modeling.
 Handles ligand preparation, dummy atom placement, and PDBQT formatting.
 """
 
+from __future__ import annotations
+
+import logging
+import os
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Optional
-import logging
 from rdkit import Chem
 from rdkit.Chem import AllChem
-import os
 from . import pdbqt_io
 
 
@@ -166,7 +169,7 @@ class SigmaHoleLigandGenerator:
 
     def _get_halogen_position(
         self, mol: Chem.Mol, halogen_idx: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Get the position of a halogen atom and its bonded carbon.
 
@@ -337,7 +340,7 @@ class SigmaHoleLigandGenerator:
     def _create_pdbqt_manual(
         self,
         mol: Chem.RWMol,
-        dummy_indices: Optional[List[int]],
+        dummy_indices: Optional[list[int]],
         charge: float,
         output_path: str,
         add_dummy: bool = True,
