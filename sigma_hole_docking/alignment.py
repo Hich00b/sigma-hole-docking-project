@@ -9,8 +9,8 @@ from __future__ import annotations
 import copy
 import logging
 import random
-import numpy as np
 from typing import Optional
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -462,7 +462,7 @@ def _align_by_halogen_only(
 
 def _find_halogen_and_carbon(
     ligand_atoms: list[dict],
-) -> list[tuple[Optional[dict], Optional[dict]]]:
+) -> list[tuple[dict | None, dict | None]]:
     """
     Find halogen atoms and the carbons bonded to them in ligand.
 
