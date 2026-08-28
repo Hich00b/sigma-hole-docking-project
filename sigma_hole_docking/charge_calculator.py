@@ -8,8 +8,6 @@ sigma-hole (extra point) method in halogen bonding.
 from __future__ import annotations
 
 import logging
-from typing import Optional
-
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -52,7 +50,7 @@ class SigmaHoleChargeCalculator:
         # Typical VdW radii for determining isosurface distance
         self.vdw_radii = {"F": 1.47, "Cl": 1.75, "Br": 1.83, "I": 1.98, "At": 2.02}
 
-    def calculate_charge(self, vmax: float, halogen: str, delta_r: Optional[float] = None) -> float:
+    def calculate_charge(self, vmax: float, halogen: str, delta_r: float | None = None) -> float:
         """
         Calculate dummy atom charge from Vmax value using the correct physics formula:
         charge = Vmax * (r_iso - r_dummy) / k_coulomb
@@ -120,7 +118,7 @@ class SigmaHoleChargeCalculator:
         df: pd.DataFrame,
         vmax_col: str = "vmax",
         halogen_col: str = "halogen",
-        delta_r_col: Optional[str] = None,
+        delta_r_col: str | None = None,
     ) -> pd.DataFrame:
         """
         Calculate charges for a batch of compounds in a DataFrame.
