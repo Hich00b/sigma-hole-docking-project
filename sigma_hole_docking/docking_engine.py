@@ -12,7 +12,6 @@ import math
 import os
 import subprocess
 import tempfile
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -150,7 +149,7 @@ class SigmaHoleDockingEngine:
 
     def _find_halogen_and_carbon(
         self, ligand_atoms: list[dict]
-    ) -> list[tuple[Optional[dict], Optional[dict]]]:
+    ) -> list[tuple[dict | None, dict | None]]:
         """
         Find halogen atoms and the carbons bonded to them in ligand.
 
@@ -344,8 +343,8 @@ class SigmaHoleDockingEngine:
                 count = len(atoms)
                 return sum_x / count, sum_y / count, sum_z / count
 
-            lig_center_x, lig_center_y, lig_center_z = compute_center(ligand_atoms)
-            rec_center_x, rec_center_y, rec_center_z = compute_center(receptor_atoms)
+            _lig_center_x, _lig_center_y, _lig_center_z = compute_center(ligand_atoms)
+            _rec_center_x, _rec_center_y, _rec_center_z = compute_center(receptor_atoms)
 
             # Disabled overlap resolution to prevent geometry distortion; rely on LJ repulsion and steric clash penalty instead.
             # Van der Waals radii for overlap resolution (Angstroms)
@@ -635,8 +634,8 @@ class SigmaHoleDockingEngine:
                 file=sys.stderr,
             )
             return (total_energy, True)  # (energy, success)
-        except Exception as e:
-            logger.exception(f"Error in physics-based scoring: {e}")
+        except Exception:
+            logger.exception("Error in physics-based scoring")
             return (float("nan"), False)
 
     def run_vina_docking(
@@ -646,13 +645,13 @@ class SigmaHoleDockingEngine:
         scoring: str = "vinardo",
         exhaustiveness: int = 8,
         num_modes: int = 9,
-        center_x: Optional[float] = None,
-        center_y: Optional[float] = None,
-        center_z: Optional[float] = None,
-        size_x: Optional[float] = None,
-        size_y: Optional[float] = None,
-        size_z: Optional[float] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        center_x: float | None = None,
+        center_y: float | None = None,
+        center_z: float | None = None,
+        size_x: float | None = None,
+        size_y: float | None = None,
+        size_z: float | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Run AutoDock Vina docking.
 
@@ -731,7 +730,7 @@ class SigmaHoleDockingEngine:
             )
             return None, "Vina executable not found"
         except Exception as e:
-            logger.exception(f"Error running Vina docking: {e}")
+            logger.exception("Error running Vina docking")
             return None, f"Docking error: {e!s}"
 
     def run_smina_docking(
@@ -741,13 +740,13 @@ class SigmaHoleDockingEngine:
         scoring: str = "vinardo",
         exhaustiveness: int = 8,
         num_modes: int = 9,
-        center_x: Optional[float] = None,
-        center_y: Optional[float] = None,
-        center_z: Optional[float] = None,
-        size_x: Optional[float] = None,
-        size_y: Optional[float] = None,
-        size_z: Optional[float] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        center_x: float | None = None,
+        center_y: float | None = None,
+        center_z: float | None = None,
+        size_x: float | None = None,
+        size_y: float | None = None,
+        size_z: float | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Run Smina docking (often better than Vina for custom scoring).
 
@@ -830,10 +829,10 @@ class SigmaHoleDockingEngine:
             logger.error("Smina docking timed out after 120 seconds")
             return None, "Smina timeout"
         except Exception as e:
-            logger.exception(f"Error running Smina docking: {e}")
+            logger.exception("Error running Smina docking")
             return None, f"Docking error: {e!s}"
 
-    def _parse_vina_affinity(self, log_file: str) -> Optional[float]:
+    def _parse_vina_affinity(self, log_file: str) -> float | None:
         """
         Parse Vina/Smina log file to extract binding affinity.
 
@@ -870,7 +869,7 @@ class SigmaHoleDockingEngine:
 
         return None
 
-    def _parse_pdbqt(self, pdbqt_path: str) -> List[Dict]:
+    def _parse_pdbqt(self, pdbqt_path: str) -> list[dict]:
         """
         Parse PDBQT file to extract atom information.
         Delegates to pdbqt_io module for consistent parsing.
@@ -883,7 +882,7 @@ class SigmaHoleDockingEngine:
 
     def compute_receptor_center(
         self, receptor_pdbqt: str
-    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    ) -> tuple[float | None, float | None, float | None]:
         """
         Compute the geometric center of a receptor from its PDBQT file.
 
@@ -967,13 +966,13 @@ class SigmaHoleDockingEngine:
         scoring: str = "vinardo",
         exhaustiveness: int = 8,
         num_modes: int = 9,
-        center_x: Optional[float] = None,
-        center_y: Optional[float] = None,
-        center_z: Optional[float] = None,
-        size_x: Optional[float] = None,
-        size_y: Optional[float] = None,
-        size_z: Optional[float] = None,
-    ) -> Dict:
+        center_x: float | None = None,
+        center_y: float | None = None,
+        center_z: float | None = None,
+        size_x: float | None = None,
+        size_y: float | None = None,
+        size_z: float | None = None,
+    ) -> dict:
         """
         Perform docking and return comprehensive results.
 
@@ -1086,7 +1085,7 @@ class SigmaHoleDockingEngine:
             results["error"] = str(e)
             return results
 
-    def _parse_all_affinities(self, vina_output: str) -> List[float]:
+    def _parse_all_affinities(self, vina_output: str) -> list[float]:
         """
         Parse all binding affinities from Vina/Smina output.
 
@@ -1125,12 +1124,12 @@ class SigmaHoleDockingEngine:
         method: str = "auto",
         exhaustiveness: int = 8,
         num_modes: int = 9,
-        center_x: Optional[float] = None,
-        center_y: Optional[float] = None,
-        center_z: Optional[float] = None,
-        size_x: Optional[float] = None,
-        size_y: Optional[float] = None,
-        size_z: Optional[float] = None,
+        center_x: float | None = None,
+        center_y: float | None = None,
+        center_z: float | None = None,
+        size_x: float | None = None,
+        size_y: float | None = None,
+        size_z: float | None = None,
     ) -> pd.DataFrame:
         """
         Score multiple ligands against a single receptor with docking.
