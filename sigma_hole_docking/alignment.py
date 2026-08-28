@@ -9,9 +9,8 @@ from __future__ import annotations
 import copy
 import logging
 import random
-from typing import Dict, List, Optional
-
 import numpy as np
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -168,8 +167,8 @@ def _align_molecules_for_sigma_hole(
             + (halogen_atom["y"] - acceptor["y"]) ** 2
             + (halogen_atom["z"] - acceptor["z"]) ** 2
         )
-        if dist < min_dist:
-            min_dist = dist
+        min_dist = min(min_dist, dist)
+        if dist == min_dist:  # Keep track of which acceptor gave the minimum distance
             target_acceptor = acceptor
 
     if not target_acceptor:
@@ -377,11 +376,11 @@ def _align_molecules_for_sigma_hole(
 
 
 def _align_by_halogen_only(
-    ligand_atoms: List[Dict],
-    receptor_atoms: List[Dict],
-    halogen_atom: Dict,
-    acceptor_atoms: List[Dict],
-) -> List[Dict]:
+    ligand_atoms: list[dict],
+    receptor_atoms: list[dict],
+    halogen_atom: dict,
+    acceptor_atoms: list[dict],
+) -> list[dict]:
     """
     Simple alignment by distance only when carbon bonded to halogen is not found.
     Handles planar molecules by adding small random offsets to prevent singularities.
@@ -409,8 +408,8 @@ def _align_by_halogen_only(
             + (halogen_atom["y"] - acceptor["y"]) ** 2
             + (halogen_atom["z"] - acceptor["z"]) ** 2
         )
-        if dist < min_dist:
-            min_dist = dist
+        min_dist = min(min_dist, dist)
+        if dist == min_dist:  # Keep track of which acceptor gave the minimum distance
             target_acceptor = acceptor
 
     if not target_acceptor:
@@ -487,8 +486,8 @@ def _find_halogen_and_carbon(
                         + (halogen_atom["y"] - carbon["y"]) ** 2
                         + (halogen_atom["z"] - carbon["z"]) ** 2
                     )
-                    if dist < min_dist:
-                        min_dist = dist
+                    min_dist = min(min_dist, dist)
+                    if dist == min_dist:  # Keep track of which carbon gave the minimum distance
                         closest_carbon = carbon
                 pairs.append((halogen_atom, closest_carbon))
             else:
