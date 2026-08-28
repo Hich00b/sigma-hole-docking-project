@@ -6,11 +6,13 @@ Checks C-X bond lengths, C-X-C bond angles, and halogen atom counts.
 Used for quality control of DFT-optimized structure input.
 """
 
-import os
+from __future__ import annotations
+
 import logging
+import os
 import pandas as pd
 import numpy as np
-from typing import Dict
+
 from rdkit import Chem
 
 logger = logging.getLogger(__name__)
@@ -72,19 +74,19 @@ class GeometryValidator:
         if structure_format == "pdb":
             try:
                 mol = Chem.MolFromPDBFile(structure_path, removeHs=False)
-            except Exception:
+            except Exception:  # Catch-all for PDB file reading errors
                 mol = None
         elif structure_format in ("sdf", "mol"):
             try:
                 mol = Chem.MolFromMolFile(structure_path, removeHs=False)
-            except Exception:
+            except Exception:  # Catch-all for SDF/MOL file reading errors
                 mol = None
             if mol is None:
                 logger.error(f"Failed to read SDF/MOL file: {structure_path}")
         elif structure_format == "mol2":
             try:
                 mol = Chem.MolFromMol2File(structure_path, removeHs=False)
-            except Exception:
+            except Exception:  # Catch-all for MOL2 file reading errors
                 mol = None
         else:
             return None
@@ -132,7 +134,7 @@ class GeometryValidator:
         cos_angle = np.clip(cos_angle, -1.0, 1.0)
         return float(np.degrees(np.arccos(cos_angle)))
 
-    def validate_molecule_geometry(self, mol: Chem.Mol, halogen: str) -> Dict:
+    def validate_molecule_geometry(self, mol: Chem.Mol, halogen: str) -> dict:
         """
         Validate geometry of a single molecule.
 
@@ -245,7 +247,7 @@ class GeometryValidator:
 
     def validate_structure_file(
         self, structure_path: str, halogen: str, structure_format: str = "auto"
-    ) -> Dict:
+    ) -> dict:
         """
         Validate a single structure file.
 
@@ -272,7 +274,7 @@ class GeometryValidator:
 
         try:
             mol_3d = mol.GetConformer()
-        except Exception as e:
+        except Exception as e:  # Catch-all for conformer retrieval errors
             result["error"] = f"Failed to get conformer: {e}"
             return result
 
@@ -282,7 +284,7 @@ class GeometryValidator:
                 details["file"] = structure_path
                 result["details"] = details
                 result["valid"] = details["overall_valid"]
-            except Exception as e:
+            except Exception as e:  # Catch-all for errors during geometry validation
                 result["error"] = f"Error during geometry validation: {e}"
                 return result
         else:

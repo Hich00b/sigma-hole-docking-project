@@ -1080,8 +1080,8 @@ class SigmaHoleDockingEngine:
             results["error"] = "All docking/scoring methods failed"
             return results
 
-        except Exception as e:
-            logger.error(f"Error in dock_and_score: {e}")
+        except Exception as e:  # Catch-all for unexpected errors during docking process
+            logger.error("Error in dock_and_score: %s", e)
             results["error"] = str(e)
             return results
 
@@ -1111,8 +1111,8 @@ class SigmaHoleDockingEngine:
                                 affinities.append(val)
                         except ValueError:
                             continue
-        except Exception as e:
-            logger.debug(f"Error parsing affinities: {e}")
+        except Exception as e:  # Catch-all for unexpected errors during affinity parsing
+            logger.debug("Error parsing affinities: %s", e)
 
         return affinities
 
@@ -1233,8 +1233,8 @@ class SigmaHoleDockingEngine:
                 else:
                     logger.debug(f"Scored {ligand_name}: {affinity} (non-finite)")
 
-            except Exception as e:
-                logger.error(f"Error scoring {ligand_name}: {e}")
+            except Exception as e:  # Catch-all to ensure batch processing continues despite individual ligand failures
+                logger.error("Error scoring %s: %s", ligand_name, e)
                 # Instead of returning 0.0 silently, return NaN to make the error visible
                 results.append(
                     {

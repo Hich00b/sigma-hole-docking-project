@@ -5,13 +5,17 @@ Analyzes docking results, ranks compounds by sigma-hole interaction strength,
 and generates validation reports.
 """
 
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+import os
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-import logging
 import matplotlib.pyplot as plt
-from datetime import datetime
-import os
+
 from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
@@ -131,7 +135,7 @@ class SigmaHoleResultsAnalyzer:
 
     def calculate_summary_statistics(
         self, df: Optional[pd.DataFrame] = None, energy_col: str = "binding_energy_kcalmol"
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate summary statistics for binding energies.
 
@@ -177,11 +181,11 @@ class SigmaHoleResultsAnalyzer:
         ligand_pdbqt: str,
         receptor_pdbqt: str,
         halogen: str = "I",
-        expected_distance_range: Tuple[float, float] = (2.8, 3.5),
-        grid_box_center: Optional[Tuple[float, float, float]] = None,
-        grid_box_size: Optional[Tuple[float, float, float]] = None,
+        expected_distance_range: tuple[float, float] = (2.8, 3.5),
+        grid_box_center: Optional[tuple[float, float, float]] = None,
+        grid_box_size: Optional[tuple[float, float, float]] = None,
         steric_clash_cutoff: float = 2.0,
-    ) -> Dict:
+    ) -> dict:
         """
         Validate that dummy atom is positioned correctly for sigma-hole interaction.
 
@@ -503,7 +507,7 @@ class SigmaHoleResultsAnalyzer:
 
         return validation
 
-    def _parse_pdbqt_detailed(self, pdbqt_path: str) -> List[Dict]:
+    def _parse_pdbqt_detailed(self, pdbqt_path: str) -> list[Dict]:
         """
         Parse PDBQT file to extract detailed atom information.
         Uses the shared PDBQT I/O module.
@@ -517,7 +521,7 @@ class SigmaHoleResultsAnalyzer:
 
     def generate_ranking_report(
         self, df: Optional[pd.DataFrame] = None, output_dir: str = "ranking_reports"
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Generate comprehensive ranking report with plots and tables.
 
@@ -529,7 +533,7 @@ class SigmaHoleResultsAnalyzer:
             Dictionary mapping report type to file path
         """
         os.makedirs(output_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         if df is None:
             df = self.rank_compounds()
@@ -599,7 +603,7 @@ class SigmaHoleResultsAnalyzer:
 
     def compare_with_physics_model(
         self, ligand_pdbqt: str, receptor_pdbqt: str, df: Optional[pd.DataFrame] = None
-    ) -> Dict:
+    ) -> dict:
         """
         Compare docking results with physics-based model (LJ + Coulomb).
 
@@ -692,7 +696,7 @@ class SigmaHoleResultsAnalyzer:
         ligand_dir: str,
         output_dir: str = "visualizations",
         num_visualizations: int = 5,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate 3D interaction visualizations for top hits using py3Dmol.
 
@@ -740,7 +744,7 @@ class SigmaHoleResultsAnalyzer:
 
     def generate_publication_figures(
         self, df: Optional[pd.DataFrame] = None, output_dir: str = "figures"
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Generate publication-ready figures for sigma-hole analysis.
 
@@ -752,7 +756,7 @@ class SigmaHoleResultsAnalyzer:
             Dictionary mapping figure type to file path
         """
         os.makedirs(output_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         if df is None:
             df = self.rank_compounds()
