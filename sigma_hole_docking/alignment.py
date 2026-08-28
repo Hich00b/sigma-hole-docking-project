@@ -9,8 +9,9 @@ from __future__ import annotations
 import copy
 import logging
 import random
-import numpy as np
 from typing import Dict, List, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
