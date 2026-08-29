@@ -5,10 +5,12 @@ Prepares receptor PDBQT files for sigma-hole docking studies.
 Handles protein/ligand receptor preparation, charge assignment, and PDBQT formatting.
 """
 
-import pandas as pd
-from typing import List
+from __future__ import annotations
+
 import logging
 import os
+
+import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from . import pdbqt_io
@@ -21,13 +23,9 @@ class SigmaHoleReceptorProcessor:
     Processes receptor files for sigma-hole docking.
     """
 
-    def __init__(self):
-        """Initialize the receptor processor."""
-        pass
-
     # Electronegativity-based fallback partial charges (Pauling scale)
     # Used when Gasteiger returns NaN (common for iodine-containing molecules)
-    _fallback_charges = {
+    _fallback_charges: dict[str, float] = {
         "H": 0.05,
         "C": -0.10,
         "N": -0.30,
@@ -39,6 +37,9 @@ class SigmaHoleReceptorProcessor:
         "I": -0.05,
         "At": 0.0,
     }
+
+    def __init__(self):
+        """Initialize the receptor processor."""
 
     def _fix_nan_charges(self, mol: Chem.Mol) -> None:
         """Replace NaN Gasteiger charges with electronegativity-based fallback values.
@@ -108,7 +109,7 @@ class SigmaHoleReceptorProcessor:
             logger.info(f"Generated receptor PDBQT manually: {output_path}")
             return True
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, RuntimeError) as e:
             logger.error(
                 f"Error preparing receptor from PDB {pdb_path}: {e}. Check PDB file format and try again."
             )
@@ -156,7 +157,7 @@ class SigmaHoleReceptorProcessor:
             logger.info(f"Generated receptor PDBQT from SMILES: {output_path}")
             return True
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing receptor from SMILES: {e}")
             return False
 
@@ -228,21 +229,18 @@ class SigmaHoleReceptorProcessor:
                 from rdkit.Chem import AllChem
 
                 rotatable_bonds = AllChem.CalcNumRotatableBonds(mol)
-                with open(output_path, "a") as f:
-                    # Go to end of file and replace the "0\n" we wrote with actual count
-                    with open(output_path, "r+") as f:
-                        content = f.read()
-                        # Find and replace the rotatable_bonds line (assumes it's the last line)
-                        lines = content.split("\n")
-                        if lines and lines[-1].strip() == "0":
-                            lines[-1] = str(rotatable_bonds)
-                            f.seek(0)
-                            f.write("\n".join(lines))
-                            f.truncate()
+                with open(output_path, "r+") as f:
+                    content = f.read()
+                    # Find and replace the rotatable_bonds line (assumes it's the last line)
+                    lines = content.split("\n")
+                    if lines and lines[-1].strip() == "0":
+                        lines[-1] = str(rotatable_bonds)
+                        f.seek(0)
+                        f.write("\n".join(lines))
+                        f.truncate()
             except Exception as e:
                 logger.debug(f"Could not compute rotatable bonds: {e}, leaving as 0")
                 # If we can't compute rotatable bonds, just leave it as 0
-                pass
 
         logger.debug(f"Created manual PDBQT with {num_atoms} atoms")
 
@@ -275,7 +273,7 @@ class SigmaHoleReceptorProcessor:
         input_col: str = "pdb_path",
         id_col: str = "receptor_id",
         input_type: str = "pdb",
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Prepare receptor PDBQT files for a batch of receptors.
 
@@ -312,7 +310,7 @@ class SigmaHoleReceptorProcessor:
                 else:
                     logger.error(f"Failed to generate receptor for {receptor_id}")
 
-            except Exception as e:
+            except (OSError, IOError, ValueError, RuntimeError) as e:
                 logger.error(f"Error processing receptor {row.get(id_col, 'unknown')}: {e}")
 
         logger.info(f"Generated {len(generated_files)} receptor PDBQT files")

@@ -5,12 +5,14 @@ Parses Multiwfn output files to extract sigma-hole Vmax values.
 Handles the standard Multiwfn ESP analysis output format.
 """
 
-import os
-import re
+from __future__ import annotations
+
 import glob
 import logging
+import os
+import re
+
 import pandas as pd
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +52,11 @@ class MultiwfnParser:
 
     def __init__(self):
         """Initialize the parser."""
-        self.results: List[Dict] = []
+        self.results: list[dict] = []
         self._pattern = _PATTERNS  # List of compiled patterns
         self._coord_pattern = _COORD_PATTERN
 
-    def _parse_surfanalysis_txt(self, filepath: str) -> Optional[Dict]:
+    def _parse_surfanalysis_txt(self, filepath: str) -> dict | None:
         """Parse a Multiwfn _surfanalysis.txt file.
 
         These files list surface maxima/minima in a tabular format.
@@ -66,7 +68,7 @@ class MultiwfnParser:
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-        except Exception as e:
+        except (OSError, IOError) as e:
             logger.error(f"Cannot read {filepath}: {e}")
             return None
 
@@ -122,7 +124,7 @@ class MultiwfnParser:
 
         return None
 
-    def parse_vmax_output(self, multiwfn_file: str) -> Dict:
+    def parse_vmax_output(self, multiwfn_file: str) -> dict:
         """
         Extract Vmax from a single Multiwfn output file.
 
@@ -177,13 +179,12 @@ class MultiwfnParser:
                         continue
 
             # Check if value is in a.u. and convert to kcal/mol (1 a.u. = 627.509 kcal/mol)
-            if result["raw_match"] is not None and "a.u." in result["raw_match"].lower():
-                if vmax is not None:
-                    vmax_conv = vmax * 627.509
-                    logger.debug(
-                        f"Converted Vmax from a.u. to kcal/mol: {vmax:.6f} -> {vmax_conv:.6f}"
-                    )
-                    vmax = vmax_conv
+            if result["raw_match"] is not None and "a.u." in result["raw_match"].lower() and vmax is not None:
+                vmax_conv = vmax * 627.509
+                logger.debug(
+                    f"Converted Vmax from a.u. to kcal/mol: {vmax:.6f} -> {vmax_conv:.6f}"
+                )
+                vmax = vmax_conv
 
             # Extract coordinates if present
             if vmax is not None and match is not None:
@@ -220,7 +221,7 @@ class MultiwfnParser:
             else:
                 logger.warning(f"No Vmax found in {multiwfn_file}")
 
-        except Exception as e:
+        except (OSError, IOError) as e:
             logger.error(f"Error parsing {multiwfn_file}: {e}")
 
         return result

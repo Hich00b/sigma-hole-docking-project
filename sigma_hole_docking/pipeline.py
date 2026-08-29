@@ -18,7 +18,6 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
 
 # Import our custom modules
 from .charge_calculator import SigmaHoleChargeCalculator
@@ -40,7 +39,7 @@ class SigmaHolePipeline:
     Main pipeline for sigma-hole molecular docking studies.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize the sigma-hole pipeline.
 
@@ -120,7 +119,7 @@ class SigmaHolePipeline:
         vmax_col: str = "vmax",
         halogen_col: str = "halogen",
         id_col: str = "compound_id",
-        delta_r_col: Optional[str] = None,
+        delta_r_col: str | None = None,
     ) -> str:
         """
         Step 1: Calculate dummy atom charges from Vmax values.
@@ -161,9 +160,9 @@ class SigmaHolePipeline:
         charge_col: str = "dummy_charge_e",
         id_col: str = "compound_id",
         add_dummy: bool = True,
-        structure_dir: Optional[str] = None,
+        structure_dir: str | None = None,
         structure_ext: str = ".sdf",
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Step 2: Generate ligand PDBQT files with optional dummy atoms.
 
@@ -274,7 +273,7 @@ class SigmaHolePipeline:
         logger.info(f"Prepared receptor: {receptor_path}")
         return receptor_path
 
-    def run_docking(self, receptor_pdbqt: str, scoring_method: Optional[str] = None) -> str:
+    def run_docking(self, receptor_pdbqt: str, scoring_method: str | None = None) -> str:
         """
         Step 4: Run docking/scoring for all ligands against the receptor.
 
@@ -353,7 +352,7 @@ class SigmaHolePipeline:
         logger.info(f"Docking results saved to {results_csv}")
         return results_csv
 
-    def analyze_results(self, results_csv: str) -> Dict:
+    def analyze_results(self, results_csv: str) -> dict:
         """
         Step 5: Analyze and rank docking results.
 
@@ -407,7 +406,7 @@ class SigmaHolePipeline:
 
         return analysis_results
 
-    def validate_results(self, receptor_pdbqt: str, analysis_results: Dict) -> List[Dict]:
+    def validate_results(self, receptor_pdbqt: str, analysis_results: dict) -> list[dict]:
         """
         Step 6: Validate geometry of top hits.
 
@@ -509,10 +508,10 @@ class SigmaHolePipeline:
         halogen_col: str = "halogen",
         id_col: str = "compound_id",
         smiles_col: str = "smiles",
-        scoring_method: Optional[str] = None,
-        structure_dir: Optional[str] = None,
+        scoring_method: str | None = None,
+        structure_dir: str | None = None,
         structure_ext: str = ".sdf",
-    ) -> Dict:
+    ) -> dict:
         """
         Run the complete sigma-hole pipeline.
 
@@ -628,7 +627,7 @@ class SigmaHolePipeline:
                         )
                     else:
                         logger.warning("No interaction visualizations were generated")
-                except Exception as e:
+                except (OSError, IOError, ValueError, RuntimeError) as e:
                     logger.error(f"Failed to generate interaction visualizations: {e}")
 
             pipeline_results = {
@@ -650,7 +649,7 @@ class SigmaHolePipeline:
             return pipeline_results
 
         except Exception as e:
-            logger.exception(f"Pipeline failed: {e}")
+            logger.exception("Pipeline failed")
             return {
                 "success": False,
                 "error": str(e),

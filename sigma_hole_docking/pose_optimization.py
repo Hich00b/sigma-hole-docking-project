@@ -4,15 +4,17 @@ Sigma Hole Docking Pose Optimization Module
 Contains pose optimization functionality for sigma-hole interactions.
 """
 
-import numpy as np
+from __future__ import annotations
+
 import copy
-from typing import Dict, List
 import logging
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def _validate_coordinates(atoms: List[Dict], context: str = "") -> bool:
+def _validate_coordinates(atoms: list[dict], context: str = "") -> bool:
     """
     Validate that all coordinates are finite numbers (not NaN or Inf).
 
@@ -39,7 +41,7 @@ def _validate_coordinates(atoms: List[Dict], context: str = "") -> bool:
     return True
 
 
-def _local_optimize_pose(ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -> List[Dict]:
+def _local_optimize_pose(ligand_atoms: list[dict], receptor_atoms: list[dict]) -> list[dict]:
     """
     Perform local optimization to refine the sigma-hole pose and find the energy minimum.
 
@@ -96,8 +98,7 @@ def _local_optimize_pose(ligand_atoms: List[Dict], receptor_atoms: List[Dict]) -
                     + (halogen_atom["y"] - oxygen["y"]) ** 2
                     + (halogen_atom["z"] - oxygen["z"]) ** 2
                 )
-                if dist < min_dist:
-                    min_dist = dist
+                min_dist = min(min_dist, dist)
 
             if min_dist < min_halogen_to_oxygen_dist:
                 min_halogen_to_oxygen_dist = min_dist
