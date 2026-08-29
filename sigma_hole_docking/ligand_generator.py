@@ -549,7 +549,7 @@ class SigmaHoleLigandGenerator:
         charge_col: str = "dummy_charge_e",
         id_col: str = "compound_id",
         add_dummy: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate PDBQT files for a batch of ligands with optional dummy atom.
 
@@ -608,7 +608,7 @@ class SigmaHoleLigandGenerator:
         id_col: str = "compound_id",
         structure_ext: str = ".sdf",
         add_dummy: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate PDBQT files for a batch of ligands from DFT structure files (PDB/SDF/MOL2).
         Preserves input geometry — no optimization.

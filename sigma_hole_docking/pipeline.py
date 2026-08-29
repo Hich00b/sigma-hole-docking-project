@@ -64,7 +64,7 @@ class SigmaHolePipeline:
         self.results_analyzer = SigmaHoleResultsAnalyzer()
         logger.info("Sigma Hole Pipeline initialized")
 
-    def _default_config(self) -> Dict:
+    def _default_config(self) -> dict:
         """Default configuration parameters."""
         return {
             # Directories

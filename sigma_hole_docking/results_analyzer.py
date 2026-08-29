@@ -507,7 +507,7 @@ class SigmaHoleResultsAnalyzer:
 
         return validation
 
-    def _parse_pdbqt_detailed(self, pdbqt_path: str) -> list[Dict]:
+    def _parse_pdbqt_detailed(self, pdbqt_path: str) -> list[dict]:
         """
         Parse PDBQT file to extract detailed atom information.
         Uses the shared PDBQT I/O module.
