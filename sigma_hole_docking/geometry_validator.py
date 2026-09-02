@@ -284,7 +284,11 @@ class GeometryValidator:
                 details["file"] = structure_path
                 result["details"] = details
                 result["valid"] = details["overall_valid"]
-            except (OSError, ValueError, RuntimeError) as e:  # Catch-all for errors during geometry validation
+            except (
+                OSError,
+                ValueError,
+                RuntimeError,
+            ) as e:  # Catch-all for errors during geometry validation
                 result["error"] = f"Error during geometry validation: {e}"
                 return result
         else:
