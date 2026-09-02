@@ -592,7 +592,7 @@ class SigmaHoleLigandGenerator:
                 else:
                     logger.error(f"Failed to generate ligand for {compound_id}")
 
-            except Exception as e:
+            except (OSError, IOError, ValueError, RuntimeError) as e:
                 logger.error(f"Error processing row {row.get(id_col, 'unknown')}: {e}")
 
         logger.info(f"Generated {len(generated_files)} ligand PDBQT files")
@@ -658,7 +658,7 @@ class SigmaHoleLigandGenerator:
                 else:
                     logger.error(f"Failed to generate ligand for {compound_id}")
 
-            except Exception as e:
+            except (OSError, IOError, ValueError, RuntimeError) as e:
                 logger.error(f"Error processing row {row.get(id_col, 'unknown')}: {e}")
 
         logger.info(f"Generated {len(generated_files)} ligand PDBQT files")
@@ -697,7 +697,7 @@ def example_usage():
             print("First 10 lines of sigma-hole PDBQT:")
             for line in lines[:10]:
                 print(line.rstrip())
-        except Exception as e:
+        except (OSError, IOError) as e:
             print(f"Could not read generated file: {e}")
     else:
         print("Failed to generate sigma-hole ligand PDBQT")
@@ -711,7 +711,7 @@ def example_usage():
             print("First 10 lines of control PDBQT:")
             for line in lines[:10]:
                 print(line.rstrip())
-        except Exception as e:
+        except (OSError, IOError) as e:
             print(f"Could not read generated file: {e}")
     else:
         print("Failed to generate control ligand PDBQT")

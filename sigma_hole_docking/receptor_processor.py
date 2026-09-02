@@ -100,7 +100,7 @@ class SigmaHoleReceptorProcessor:
             try:
                 AllChem.ComputeGasteigerCharges(mol)
                 self._fix_nan_charges(mol)
-            except Exception as e:
+            except (ValueError, RuntimeError) as e:
                 logger.warning(f"Failed to compute Gasteiger charges: {e}, using fallback values")
                 self._fix_nan_charges(mol)  # This will set all atoms to fallback charges
 
@@ -184,7 +184,7 @@ class SigmaHoleReceptorProcessor:
             # Get Gasteiger charge if available
             try:
                 charge = atom.GetDoubleProp("_GasteigerCharge")
-            except Exception as e:
+            except (AttributeError, KeyError) as e:
                 logger.debug(
                     f"Could not get Gasteiger charge for atom {atom.GetIdx()}: {e}, defaulting to 0.0"
                 )

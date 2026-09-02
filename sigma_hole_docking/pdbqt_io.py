@@ -310,7 +310,7 @@ def write_pdbqt_from_mol(
 
                     rotatable_bonds = AllChem.CalcNumRotatableBonds(mol)
                     f.write(f"{rotatable_bonds}\n")
-                except Exception as e:
+                except (ValueError, AttributeError) as e:
                     logger.debug(f"Could not compute rotatable bonds: {e}, leaving as 0")
                     f.write("0\n")
 

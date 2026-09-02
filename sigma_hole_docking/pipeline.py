@@ -11,6 +11,7 @@ Orchestrates:
 4. Docking/scoring with electrostatics-aware methods
 5. Results analysis and ranking
 """
+from __future__ import annotations
 
 import argparse
 import logging
@@ -262,7 +263,7 @@ class SigmaHolePipeline:
                 shutil.copy2(receptor_input, receptor_path)
                 logger.info(f"Copied PDBQT file: {receptor_input} -> {receptor_path}")
                 success = True
-            except Exception as e:
+            except (OSError, IOError) as e:
                 logger.error(f"Failed to copy PDBQT file: {e}")
                 success = False
         else:
