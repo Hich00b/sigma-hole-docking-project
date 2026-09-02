@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
-
 import numpy as np
+
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -34,7 +33,7 @@ def preprocess_smiles(smiles: str) -> str:
         try:
             Chem.Kekulize(mol)
             return Chem.MolToSmiles(mol)
-        except Exception:
+        except (ValueError, RuntimeError):
             # If kekulization fails, continue with non-kekulized mol but try fixes first
             fixed_smiles = _fix_known_problematic_smiles(smiles)
             if fixed_smiles != smiles:
@@ -44,7 +43,7 @@ def preprocess_smiles(smiles: str) -> str:
                     try:
                         Chem.Kekulize(fixed_mol)
                         return Chem.MolToSmiles(fixed_mol)
-                    except Exception:
+                    except (ValueError, RuntimeError):
                         # If fixed version still won't kekulize, use it as-is
                         mol = fixed_mol
             # If no fix or fix didn't help, continue with original non-kekulized mol
@@ -59,7 +58,7 @@ def preprocess_smiles(smiles: str) -> str:
                 try:
                     Chem.Kekulize(fixed_mol)
                     return Chem.MolToSmiles(fixed_mol)
-                except Exception:
+                except (ValueError, RuntimeError):
                     # If still can't kekulize, continue processing the fixed version
                     mol = fixed_mol
             # If fixed version can't be parsed, fall back to original approach below
@@ -75,19 +74,20 @@ def preprocess_smiles(smiles: str) -> str:
     try:
         sanitize_ops = Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_KEKULIZE
         Chem.SanitizeMol(mol, sanitizeOps=sanitize_ops)
-    except Exception:
-        pass  # Continue anyway
+    except (ValueError, RuntimeError) as e:
+        logger.debug(f"Could not sanitize mol: {e}, continuing anyway")
 
     # Add hydrogens
     try:
         mol = Chem.AddHs(mol)
-    except Exception:
-        pass  # Continue anyway
+    except (ValueError, RuntimeError) as e:
+        logger.debug(f"Could not add hydrogens: {e}, continuing anyway")
 
     # Try to generate SMILES
     try:
         return Chem.MolToSmiles(mol)
-    except Exception:
+    except (ValueError, RuntimeError) as e:
+        logger.debug(f"Could not generate SMILES: {e}, returning original")
         # If we can't generate SMILES, return original
         return smiles
 
@@ -333,14 +333,14 @@ class SigmaHoleLigandGenerator:
             logger.info(f"Generated PDBQT manually: {output_path}")
             return True
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing ligand from SMILES: {e}")
             return False
 
     def _create_pdbqt_manual(
         self,
         mol: Chem.RWMol,
-        dummy_indices: Optional[list[int]],
+        dummy_indices: list[int] | None,
         charge: float,
         output_path: str,
         add_dummy: bool = True,
@@ -428,13 +428,13 @@ class SigmaHoleLigandGenerator:
             if structure_format == "pdb":
                 try:
                     mol = Chem.MolFromPDBFile(structure_path, removeHs=False)
-                except Exception:
+                except (OSError, IOError):
                     mol = None
             elif structure_format == "sdf":
                 logger.info(f"DEBUG: Reading SDF file: {structure_path}")
                 try:
                     mol = Chem.MolFromMolFile(structure_path, removeHs=False)
-                except Exception:
+                except (OSError, IOError):
                     mol = None
                 logger.info(f"DEBUG: MolFromMolFile result: {mol is not None}")
                 if mol is None:
@@ -443,7 +443,7 @@ class SigmaHoleLigandGenerator:
             elif structure_format == "mol2":
                 try:
                     mol = Chem.MolFromMol2File(structure_path, removeHs=False)
-                except Exception:
+                except (OSError, IOError):
                     mol = None
             else:
                 logger.error(f"Unsupported structure format: {structure_format}")
@@ -522,7 +522,7 @@ class SigmaHoleLigandGenerator:
                 )
             return True
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing ligand from structure: {e}")
             return False
 

@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 import os
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 from rdkit import Chem
 
@@ -74,19 +75,19 @@ class GeometryValidator:
         if structure_format == "pdb":
             try:
                 mol = Chem.MolFromPDBFile(structure_path, removeHs=False)
-            except Exception:  # Catch-all for PDB file reading errors
+            except (OSError, IOError):  # Catch-all for PDB file reading errors
                 mol = None
         elif structure_format in ("sdf", "mol"):
             try:
                 mol = Chem.MolFromMolFile(structure_path, removeHs=False)
-            except Exception:  # Catch-all for SDF/MOL file reading errors
+            except (OSError, IOError):  # Catch-all for SDF/MOL file reading errors
                 mol = None
             if mol is None:
                 logger.error(f"Failed to read SDF/MOL file: {structure_path}")
         elif structure_format == "mol2":
             try:
                 mol = Chem.MolFromMol2File(structure_path, removeHs=False)
-            except Exception:  # Catch-all for MOL2 file reading errors
+            except (OSError, IOError):  # Catch-all for MOL2 file reading errors
                 mol = None
         else:
             return None
@@ -274,7 +275,12 @@ class GeometryValidator:
 
         try:
             mol_3d = mol.GetConformer()
-        except Exception as e:  # Catch-all for conformer retrieval errors
+        except (
+            OSError,
+            IOError,
+            ValueError,
+            RuntimeError,
+        ) as e:  # Catch-all for conformer retrieval errors
             result["error"] = f"Failed to get conformer: {e}"
             return result
 
@@ -284,7 +290,12 @@ class GeometryValidator:
                 details["file"] = structure_path
                 result["details"] = details
                 result["valid"] = details["overall_valid"]
-            except Exception as e:  # Catch-all for errors during geometry validation
+            except (
+                OSError,
+                IOError,
+                ValueError,
+                RuntimeError,
+            ) as e:  # Catch-all for errors during geometry validation
                 result["error"] = f"Error during geometry validation: {e}"
                 return result
         else:
