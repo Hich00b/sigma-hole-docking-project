@@ -743,7 +743,7 @@ class SigmaHoleResultsAnalyzer:
             return []
 
     def generate_publication_figures(
-        self, df: Optional[pd.DataFrame] = None, output_dir: str = "figures"
+        self, df: pd.DataFrame | None = None, output_dir: str = "figures"
     ) -> dict[str, str]:
         """
         Generate publication-ready figures for sigma-hole analysis.
@@ -768,7 +768,7 @@ class SigmaHoleResultsAnalyzer:
         try:
             # Figure 1: Energy distribution with cutoff regions
             plt.figure(figsize=(10, 6))
-            n, bins, patches = plt.hist(
+            _n, bins, patches = plt.hist(
                 df["binding_energy_kcalmol"], bins=50, edgecolor="black", alpha=0.7, color="skyblue"
             )
 
