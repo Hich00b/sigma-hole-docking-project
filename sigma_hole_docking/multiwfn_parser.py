@@ -68,7 +68,7 @@ class MultiwfnParser:
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.error(f"Cannot read {filepath}: {e}")
             return None
 
@@ -223,7 +223,7 @@ class MultiwfnParser:
             else:
                 logger.warning(f"No Vmax found in {multiwfn_file}")
 
-        except (OSError, IOError) as e:
+        except OSError as e:
             logger.error(f"Error parsing {multiwfn_file}: {e}")
 
         return result

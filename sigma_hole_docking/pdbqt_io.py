@@ -122,7 +122,7 @@ def parse_pdbqt(pdbqt_path: str) -> list[dict]:
     except FileNotFoundError:
         logger.error(f"PDBQT file not found: {pdbqt_path}")
         return []  # Return empty list to signal failure
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.error(f"Error reading PDBQT file {pdbqt_path}: {e}")
         return []  # Return empty list to signal failure
 
@@ -163,7 +163,7 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
                             atoms.append(atom_data)
                         except (ValueError, IndexError):
                             continue
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.error(f"Error parsing PDBQT {pdbqt_path}: {e}")
 
     return atoms
@@ -229,7 +229,7 @@ def write_pdbqt_atoms(
         logger.info(f"Wrote {len(atoms)} atoms to PDBQT file: {output_path}")
         return True
 
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.error(f"Error writing PDBQT file {output_path}: {e}")
         return False
 
@@ -320,7 +320,7 @@ def write_pdbqt_from_mol(
             logger.info(f"Wrote PDBQT: {output_path}")
         return True
 
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.error(f"Error writing PDBQT from molecule {output_path}: {e}")
         return False
 

@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import logging
 import os
-import numpy as np
 
+import numpy as np
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from . import pdbqt_io
 
+from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +333,7 @@ class SigmaHoleLigandGenerator:
             logger.info(f"Generated PDBQT manually: {output_path}")
             return True
 
-        except (OSError, IOError, ValueError, RuntimeError) as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing ligand from SMILES: {e}")
             return False
 
@@ -428,13 +428,13 @@ class SigmaHoleLigandGenerator:
             if structure_format == "pdb":
                 try:
                     mol = Chem.MolFromPDBFile(structure_path, removeHs=False)
-                except (OSError, IOError):
+                except OSError:
                     mol = None
             elif structure_format == "sdf":
                 logger.info(f"DEBUG: Reading SDF file: {structure_path}")
                 try:
                     mol = Chem.MolFromMolFile(structure_path, removeHs=False)
-                except (OSError, IOError):
+                except OSError:
                     mol = None
                 logger.info(f"DEBUG: MolFromMolFile result: {mol is not None}")
                 if mol is None:
@@ -443,7 +443,7 @@ class SigmaHoleLigandGenerator:
             elif structure_format == "mol2":
                 try:
                     mol = Chem.MolFromMol2File(structure_path, removeHs=False)
-                except (OSError, IOError):
+                except OSError:
                     mol = None
             else:
                 logger.error(f"Unsupported structure format: {structure_format}")
@@ -522,7 +522,7 @@ class SigmaHoleLigandGenerator:
                 )
             return True
 
-        except (OSError, IOError, ValueError, RuntimeError) as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing ligand from structure: {e}")
             return False
 

@@ -8,13 +8,13 @@ and generates validation reports.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 import os
+from datetime import datetime, timezone
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from . import pdbqt_io
 

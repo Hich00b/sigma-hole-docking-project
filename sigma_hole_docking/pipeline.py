@@ -12,18 +12,19 @@ Orchestrates:
 5. Results analysis and ranking
 """
 
-import pandas as pd
 import argparse
 import logging
 import os
 import sys
 from datetime import datetime, timezone
 
+import pandas as pd
+
 # Import our custom modules
 from .charge_calculator import SigmaHoleChargeCalculator
+from .docking_engine import SigmaHoleDockingEngine
 from .ligand_generator import SigmaHoleLigandGenerator
 from .receptor_processor import SigmaHoleReceptorProcessor
-from .docking_engine import SigmaHoleDockingEngine
 from .results_analyzer import SigmaHoleResultsAnalyzer
 
 logging.basicConfig(
@@ -627,7 +628,7 @@ class SigmaHolePipeline:
                         )
                     else:
                         logger.warning("No interaction visualizations were generated")
-                except (OSError, IOError, ValueError, RuntimeError) as e:
+                except (OSError, ValueError, RuntimeError) as e:
                     logger.error(f"Failed to generate interaction visualizations: {e}")
 
             pipeline_results = {

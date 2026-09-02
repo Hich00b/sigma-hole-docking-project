@@ -13,6 +13,7 @@ import os
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
+
 from . import pdbqt_io
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ class SigmaHoleReceptorProcessor:
             logger.info(f"Generated receptor PDBQT manually: {output_path}")
             return True
 
-        except (OSError, IOError, ValueError, RuntimeError) as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(
                 f"Error preparing receptor from PDB {pdb_path}: {e}. Check PDB file format and try again."
             )
@@ -157,7 +158,7 @@ class SigmaHoleReceptorProcessor:
             logger.info(f"Generated receptor PDBQT from SMILES: {output_path}")
             return True
 
-        except (OSError, IOError, ValueError, RuntimeError) as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error preparing receptor from SMILES: {e}")
             return False
 
@@ -310,7 +311,7 @@ class SigmaHoleReceptorProcessor:
                 else:
                     logger.error(f"Failed to generate receptor for {receptor_id}")
 
-            except (OSError, IOError, ValueError, RuntimeError) as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logger.error(f"Error processing receptor {row.get(id_col, 'unknown')}: {e}")
 
         logger.info(f"Generated {len(generated_files)} receptor PDBQT files")
