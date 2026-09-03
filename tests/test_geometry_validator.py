@@ -10,11 +10,11 @@ def test_hybridization_aromatic():
     # Create benzene molecule
     mol = Chem.MolFromSmiles("c1ccccc1")
     assert mol is not None
-    
+
     # Test that we can call the validation method
     # We'll test with a simple halogen (iodine attached to benzene)
     # Note: This is a simplified test - full validation requires 3D structure
-    assert hasattr(validator, 'validate_molecule_geometry')
+    assert hasattr(validator, "validate_molecule_geometry")
 
 
 def test_hybridization_sp3():
@@ -23,9 +23,9 @@ def test_hybridization_sp3():
     # Create ethane molecule
     mol = Chem.MolFromSmiles("CC")
     assert mol is not None
-    
+
     # Test that we can call the validation method
-    assert hasattr(validator, 'validate_molecule_geometry')
+    assert hasattr(validator, "validate_molecule_geometry")
 
 
 def test_hybridization_sp():
@@ -34,9 +34,9 @@ def test_hybridization_sp():
     # Create acetylene molecule
     mol = Chem.MolFromSmiles("C#C")
     assert mol is not None
-    
+
     # Test that we can call the validation method
-    assert hasattr(validator, 'validate_molecule_geometry')
+    assert hasattr(validator, "validate_molecule_geometry")
 
 
 def test_bond_length_tolerance():
@@ -44,12 +44,12 @@ def test_bond_length_tolerance():
     validator = GeometryValidator()
     # Test that we can instantiate the validator
     assert validator is not None
-    assert hasattr(validator, 'validate_molecule_geometry')
+    assert hasattr(validator, "validate_molecule_geometry")
 
 
 def test_batch_validate():
     """Test directory of structures → DataFrame with valid/invalid."""
     validator = GeometryValidator()
     # Test that batch_validate method exists
-    assert hasattr(validator, 'batch_validate')
-    assert callable(getattr(validator, 'batch_validate', None))
+    assert hasattr(validator, "batch_validate")
+    assert callable(getattr(validator, "batch_validate", None))

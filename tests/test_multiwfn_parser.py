@@ -8,14 +8,14 @@ def test_surfanalysis_starred_max():
     parser = MultiwfnParser()
     # Test that we can instantiate the parser
     assert parser is not None
-    assert hasattr(parser, 'parse_vmax_output')
+    assert hasattr(parser, "parse_vmax_output")
 
 
 def test_au_conversion():
     """Test value with a.u. → converted ×627.509."""
     parser = MultiwfnParser()
     # Test that we can call parse_vmax_output
-    assert hasattr(parser, 'parse_vmax_output')
+    assert hasattr(parser, "parse_vmax_output")
 
 
 def test_none_raw_match():
@@ -29,4 +29,4 @@ def test_heuristic_fallback():
     """Test no standard pattern but a number in range → extracted with warning."""
     parser = MultiwfnParser()
     # Test that heuristic fallback works
-    assert hasattr(parser, 'parse_vmax_output')
+    assert hasattr(parser, "parse_vmax_output")

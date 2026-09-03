@@ -8,21 +8,21 @@ def test_dummy_placement():
     generator = SigmaHoleLigandGenerator()
     # Test that we can instantiate the generator
     assert generator is not None
-    assert hasattr(generator, 'prepare_ligand_from_smiles')
+    assert hasattr(generator, "prepare_ligand_from_smiles")
 
 
 def test_charge_conservation():
     """Test halogen charge reduced by dummy charge."""
     generator = SigmaHoleLigandGenerator()
     # Test with a simple molecule
-    assert hasattr(generator, 'prepare_ligand_from_smiles')
+    assert hasattr(generator, "prepare_ligand_from_smiles")
 
 
 def test_control_no_dummy():
     """Test add_dummy=False → no dummy atoms in output."""
     generator = SigmaHoleLigandGenerator()
-    # Test that we can call prepare_ligand_from_smiles 
-    assert hasattr(generator, 'prepare_ligand_from_smiles')
+    # Test that we can call prepare_ligand_from_smiles
+    assert hasattr(generator, "prepare_ligand_from_smiles")
 
 
 def test_multi_halogen_generation():
@@ -30,4 +30,4 @@ def test_multi_halogen_generation():
     generator = SigmaHoleLigandGenerator()
     # Test that we can call prepare_ligand_from_smiles
     assert generator is not None
-    assert hasattr(generator, 'prepare_ligand_from_smiles')
+    assert hasattr(generator, "prepare_ligand_from_smiles")

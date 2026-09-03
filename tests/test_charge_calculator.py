@@ -42,34 +42,28 @@ def test_delta_r_exceeds_r_iso():
 def test_batch_dataframe():
     """Test DataFrame input → dummy_charge column added."""
     calculator = SigmaHoleChargeCalculator()
-    df = pd.DataFrame({
-        'halogen': ['I', 'Br', 'Cl'],
-        'vmax': [20.0, 15.0, 10.0]
-    })
+    df = pd.DataFrame({"halogen": ["I", "Br", "Cl"], "vmax": [20.0, 15.0, 10.0]})
     result_df = calculator.batch_calculate_from_dataframe(df)
-    assert 'dummy_charge' in result_df.columns
+    assert "dummy_charge" in result_df.columns
     assert len(result_df) == 3
 
 
 def test_save_charges_rename():
     """Test output CSV has dummy_charge column."""
     calculator = SigmaHoleChargeCalculator()
-    df = pd.DataFrame({
-        'halogen': ['I'],
-        'vmax': [20.0]
-    })
-    
+    df = pd.DataFrame({"halogen": ["I"], "vmax": [20.0]})
+
     # Test saving to CSV
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         temp_path = f.name
 
     try:
         result_df = calculator.batch_calculate_from_dataframe(df)
         result_df.to_csv(temp_path, index=False)
-        
+
         # Read back and check
         df_read = pd.read_csv(temp_path)
-        assert 'dummy_charge' in df_read.columns
+        assert "dummy_charge" in df_read.columns
         assert len(df_read) == 1
     finally:
         if os.path.exists(temp_path):

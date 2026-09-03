@@ -7,7 +7,7 @@ from sigma_hole_docking.docking_engine import SigmaHoleDockingEngine
 def test_physics_score_return_type():
     """Valid pair → (float, True); missing file → (nan, False)."""
     engine = SigmaHoleDockingEngine()
-    
+
     # Test with a valid halogen-carbon pair (this would need actual files in practice)
     # For now we just test the return type structure
     result = engine.calculate_physics_score("test_receptor.pdbqt", "test_ligand.pdbqt")
@@ -24,4 +24,4 @@ def test_multi_halogen():
     # This test requires actual PDBQT files to be meaningful
     # For CI purposes, we just verify the function exists and can be called
     engine = SigmaHoleDockingEngine()
-    assert hasattr(engine, 'calculate_physics_score')
+    assert hasattr(engine, "calculate_physics_score")
