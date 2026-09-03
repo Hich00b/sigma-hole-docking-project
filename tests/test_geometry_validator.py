@@ -1,6 +1,5 @@
 """Tests for the geometry validator module."""
 
-import pytest
 from rdkit import Chem
 from sigma_hole_docking.geometry_validator import GeometryValidator
 
@@ -34,7 +33,7 @@ def test_hybridization_sp():
 
 def test_bond_length_tolerance():
     """C-I within 0.10 Å of 2.14 → passes."""
-    validator = GeometryValidator()
+    GeometryValidator()
     # Test with iodomethane - C-I bond should be around 2.14 Å
     # We'll create a simple validation test
     from sigma_hole_docking.pdbqt_io import parse_pdbqt

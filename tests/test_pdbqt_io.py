@@ -1,8 +1,6 @@
 """Tests for the PDBQT I/O module."""
 
-import pytest
-import numpy as np
-from sigma_hole_docking.pdbqt_io import parse_pdbqt, write_pdbqt_atoms, write_pdbqt_from_mol, compute_geometric_center, compute_distance
+from sigma_hole_docking.pdbqt_io import parse_pdbqt, write_pdbqt_from_mol
 from rdkit import Chem
 
 
@@ -71,11 +69,11 @@ ATOM      3  EP     2.000   0.000   0.000  0.00  0.00    0.5000 EP
         assert len(atoms) == 3
 
         # First two should not be dummy
-        assert atoms[0]['is_dummy'] == False  # Carbon
-        assert atoms[1]['is_dummy'] == False  # Hydrogen with zero charge
+        assert not atoms[0]['is_dummy']  # Carbon
+        assert not atoms[1]['is_dummy']  # Hydrogen with zero charge
 
         # Third should be dummy (EP type)
-        assert atoms[2]['is_dummy'] == True
+        assert atoms[2]['is_dummy']
         assert atoms[2]['element'] == 'EP'
         assert atoms[2]['charge'] == 0.5
 

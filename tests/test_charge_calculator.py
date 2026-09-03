@@ -1,7 +1,6 @@
 """Tests for the charge calculator module."""
 
 import pytest
-import numpy as np
 import pandas as pd
 from sigma_hole_docking.charge_calculator import SigmaHoleChargeCalculator
 

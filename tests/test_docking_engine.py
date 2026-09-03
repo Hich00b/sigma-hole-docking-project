@@ -1,6 +1,5 @@
 """Tests for the docking engine module."""
 
-import pytest
 import numpy as np
 from sigma_hole_docking.docking_engine import SigmaHoleDockingEngine
 
@@ -15,7 +14,7 @@ def test_physics_score_return_type():
     assert len(result) == 2
     assert isinstance(result[0], float)
     assert isinstance(result[1], bool)
-    assert result[1] == False  # success flag should be False
+    assert not result[1]  # success flag should be False
     assert np.isnan(result[0])  # energy should be NaN
 
     # Note: We can't easily test the success case without actual PDBQT files

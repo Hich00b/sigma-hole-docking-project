@@ -1,16 +1,12 @@
 """Tests for the ligand generator module."""
 
-import pytest
-from rdkit import Chem
 from sigma_hole_docking.ligand_generator import SigmaHoleLigandGenerator
-import numpy as np
 
 
 def test_dummy_placement():
     """Dummy is on the C–X extension at delta_r from halogen."""
     generator = SigmaHoleLigandGenerator()
     # Test with iodomethane - dummy should be placed along C-I extension
-    smiles = "CI"  # Iodomethane
     # This is a simplified test - we're checking that the generator runs
     # and produces a molecule with the expected properties
     # Full testing would require checking the actual 3D placement

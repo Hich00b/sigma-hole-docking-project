@@ -1,6 +1,5 @@
 """Tests for the Multiwfn parser module."""
 
-import pytest
 import tempfile
 import os
 from sigma_hole_docking.multiwfn_parser import MultiwfnParser
@@ -31,7 +30,7 @@ Number of surface minima: 0
     try:
         result = parser.parse_vmax_output(file_path)
         # Should find the value (7.100) from the line with * (the starred value is the Vmax)
-        assert result['success'] == True
+        assert result['success']
         assert abs(result['vmax'] - 7.100) < 0.001
     finally:
         if os.path.exists(file_path):
@@ -56,7 +55,7 @@ Some more output
         result = parser.parse_vmax_output(file_path)
         # Should find the value (0.200 a.u.) and convert to kcal/mol
         # 0.200 * 627.509 = 125.5018
-        assert result['success'] == True
+        assert result['success']
         assert abs(result['vmax'] - 125.5018) < 0.001
     finally:
         if os.path.exists(file_path):
@@ -78,7 +77,7 @@ Just some random text.
 
     try:
         result = parser.parse_vmax_output(file_path)
-        assert result['success'] == False
+        assert not result['success']
         assert result['vmax'] is None
     finally:
         if os.path.exists(file_path):
@@ -102,7 +101,7 @@ Some more output
     try:
         result = parser.parse_vmax_output(file_path)
         # Should heuristically find 25.5
-        assert result['success'] == True
+        assert result['success']
         assert abs(result['vmax'] - 25.5) < 0.001
     finally:
         if os.path.exists(file_path):
