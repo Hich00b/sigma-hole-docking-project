@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,7 +69,7 @@ class SigmaHoleResultsAnalyzer:
 
     def rank_compounds(
         self,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         energy_col: str = "binding_energy_kcalmol",
         id_col: str = "compound_id",
     ) -> pd.DataFrame:
@@ -109,7 +108,7 @@ class SigmaHoleResultsAnalyzer:
 
     def get_top_hits(
         self,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         n: int = 10,
         energy_col: str = "binding_energy_kcalmol",
     ) -> pd.DataFrame:
@@ -134,7 +133,7 @@ class SigmaHoleResultsAnalyzer:
         return top_hits
 
     def calculate_summary_statistics(
-        self, df: Optional[pd.DataFrame] = None, energy_col: str = "binding_energy_kcalmol"
+        self, df: pd.DataFrame | None = None, energy_col: str = "binding_energy_kcalmol"
     ) -> dict:
         """
         Calculate summary statistics for binding energies.
@@ -182,8 +181,8 @@ class SigmaHoleResultsAnalyzer:
         receptor_pdbqt: str,
         halogen: str = "I",
         expected_distance_range: tuple[float, float] = (2.8, 3.5),
-        grid_box_center: Optional[tuple[float, float, float]] = None,
-        grid_box_size: Optional[tuple[float, float, float]] = None,
+        grid_box_center: tuple[float, float, float] | None = None,
+        grid_box_size: tuple[float, float, float] | None = None,
         steric_clash_cutoff: float = 2.0,
     ) -> dict:
         """
@@ -501,7 +500,7 @@ class SigmaHoleResultsAnalyzer:
             if validation["cx_o_angle"] is not None:
                 logger.info(f"C-X···O angle: {validation['cx_o_angle']:.1f}° (expected: ≥160.0°)")
 
-        except Exception as e:
+        except (ValueError, AttributeError) as e:
             logger.error(f"Error during geometry validation: {e}")
             validation["error"] = str(e)
 
@@ -520,7 +519,7 @@ class SigmaHoleResultsAnalyzer:
         return atoms
 
     def generate_ranking_report(
-        self, df: Optional[pd.DataFrame] = None, output_dir: str = "ranking_reports"
+        self, df: pd.DataFrame | None = None, output_dir: str = "ranking_reports"
     ) -> dict[str, str]:
         """
         Generate comprehensive ranking report with plots and tables.
@@ -597,12 +596,12 @@ class SigmaHoleResultsAnalyzer:
             logger.info(f"Generated ranking report in {output_dir}")
             return report_files
 
-        except Exception as e:
+        except (OSError, IOError, ValueError) as e:
             logger.error(f"Error generating ranking report: {e}")
             return {}
 
     def compare_with_physics_model(
-        self, ligand_pdbqt: str, receptor_pdbqt: str, df: Optional[pd.DataFrame] = None
+        self, ligand_pdbqt: str, receptor_pdbqt: str, df: pd.DataFrame | None = None
     ) -> dict:
         """
         Compare docking results with physics-based model (LJ + Coulomb).
@@ -639,7 +638,7 @@ class SigmaHoleResultsAnalyzer:
                 try:
                     physics_score, ok = engine.calculate_physics_score(ligand_file, receptor_pdbqt)
                     physics_scores.append(physics_score if ok else np.nan)
-                except Exception as e:
+                except (ValueError, RuntimeError) as e:
                     logger.debug(f"Error calculating physics score for {row['compound_id']}: {e}")
                     physics_scores.append(np.nan)
             else:
@@ -738,7 +737,7 @@ class SigmaHoleResultsAnalyzer:
                 f"Generated {len(created_files)} interaction visualizations in {output_dir}"
             )
             return created_files
-        except Exception as e:
+        except (OSError, IOError, ValueError) as e:
             logger.error(f"Error generating interaction visualizations: {e}")
             return []
 

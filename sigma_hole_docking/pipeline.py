@@ -264,7 +264,7 @@ class SigmaHolePipeline:
                 shutil.copy2(receptor_input, receptor_path)
                 logger.info(f"Copied PDBQT file: {receptor_input} -> {receptor_path}")
                 success = True
-            except (OSError, IOError) as e:
+            except OSError as e:
                 logger.error(f"Failed to copy PDBQT file: {e}")
                 success = False
         else:

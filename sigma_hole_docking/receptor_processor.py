@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import ClassVar
 
 import pandas as pd
 from rdkit import Chem
@@ -26,7 +27,7 @@ class SigmaHoleReceptorProcessor:
 
     # Electronegativity-based fallback partial charges (Pauling scale)
     # Used when Gasteiger returns NaN (common for iodine-containing molecules)
-    _fallback_charges: dict[str, float] = {
+    _fallback_charges: ClassVar[dict[str, float]] = {
         "H": 0.05,
         "C": -0.10,
         "N": -0.30,
@@ -239,7 +240,7 @@ class SigmaHoleReceptorProcessor:
                         f.seek(0)
                         f.write("\n".join(lines))
                         f.truncate()
-            except Exception as e:
+            except (ValueError, AttributeError) as e:
                 logger.debug(f"Could not compute rotatable bonds: {e}, leaving as 0")
                 # If we can't compute rotatable bonds, just leave it as 0
 
@@ -263,7 +264,7 @@ class SigmaHoleReceptorProcessor:
             return self.prepare_receptor_from_smiles(
                 "CC(=O)C", output_path, add_hydrogens=True, optimize=True
             )
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error(f"Error creating acetone receptor: {e}")
             return False
 
@@ -333,7 +334,7 @@ def example_usage():
                 content = f.read()
                 print("Acetone receptor PDBQT:")
                 print(content)
-        except Exception as e:
+        except OSError as e:
             print(f"Could not read receptor file: {e}")
     else:
         print("Failed to create acetone receptor")
