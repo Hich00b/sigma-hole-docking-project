@@ -596,7 +596,7 @@ class SigmaHoleResultsAnalyzer:
             logger.info(f"Generated ranking report in {output_dir}")
             return report_files
 
-        except (OSError, IOError, ValueError) as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Error generating ranking report: {e}")
             return {}
 
@@ -737,7 +737,7 @@ class SigmaHoleResultsAnalyzer:
                 f"Generated {len(created_files)} interaction visualizations in {output_dir}"
             )
             return created_files
-        except (OSError, IOError, ValueError) as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Error generating interaction visualizations: {e}")
             return []
 
