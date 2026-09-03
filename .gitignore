@@ -96,8 +96,12 @@ receptors/
 
 # Development/debug files
 debug_*.py
-test_*.py
-!tests/test_*  # Don't ignore actual test suite
+# Explicitly ignore specific test files in root (not part of test suite)
+test_au_line.py
+test_heuristic.py
+test_heuristic_line.py
+test_patterns.py
+test_pipeline.py
 
 # Backup files
 *.backup
