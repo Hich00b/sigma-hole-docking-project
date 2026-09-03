@@ -1,14 +1,14 @@
 """Tests for the PDBQT I/O module."""
 
-import os
 import tempfile
+import os
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from sigma_hole_docking.pdbqt_io import (
+    compute_distance,
+    compute_geometric_center,
     parse_pdbqt,
     write_pdbqt_from_mol,
-    compute_geometric_center,
-    compute_distance,
 )
 
 
