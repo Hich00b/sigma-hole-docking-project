@@ -13,6 +13,9 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 
 - `sigma_hole_pipeline.py` - Main pipeline orchestrator
 - Supporting modules:
+
+**Note on External Dependencies:** The pipeline includes physics-based scoring that works without any external tools. For enhanced docking capabilities, Vina or Smina can be used optionally. If neither Vina nor Smina is installed on your system, the pipeline will automatically fall back to physics-based scoring with a warning message. To install Vina, use: `conda install -c conda-forge autodock-vina`
+
   - `charge_calculator.py` - Calculates dummy atom charges from Vmax values
   - `ligand_generator.py` - Generates ligand structures with dummy atoms
   - `receptor_processor.py` - Processes receptor PDBQT files
@@ -24,7 +27,7 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 - `requirements_colab.txt` - Python package requirements for Colab
 - Example data files:
   - `test_input.csv` - Example compound input data
-  - `receptor.pdbqt` - Lysozyme receptor (default)
+  - `receptor.pdbqt` - Example receptor (small acetone test receptor)
   - Various ligand and structure files (.pdbqt, .sdf)
 
 ## How to Use in Google Colab
@@ -33,13 +36,13 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 
 2. **Upload the files** from this repository to your Colab notebook:
    - All `.py` files
-   - `requirements_colab.txt`
+   - Dependencies are specified in `pyproject.toml` (no separate requirements file needed)
    - Example data files (or your own data)
    - `sigma_hole_docking_colab.ipynb` (optional - you can copy the code from here)
 
 3. **Install dependencies** in a code cell:
    ```python
-   !pip install -r requirements_colab.txt
+   !pip install -e .
    ```
 
 4. **Run the pipeline** as demonstrated in the example notebook:
@@ -116,7 +119,7 @@ For best accuracy, provide pre-optimized DFT structure files:
 
 ### Common Issues
 1. **RDKit installation problems**: Try restarting the runtime and reinstalling
-2. **Missing dependencies**: Ensure all packages from `requirements_colab.txt` are installed
+2. **Missing dependencies**: Ensure all packages from `pyproject.toml` are installed (use `pip install -e ./`)
 3. **File path issues**: Use absolute paths or ensure files are in the current working directory
 4. **Geometry mismatches**: For best results, use pre-optimized DFT structures that match your Vmax calculations
 

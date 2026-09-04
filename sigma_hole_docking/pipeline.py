@@ -284,6 +284,14 @@ class SigmaHolePipeline:
             receptor_pdbqt: Path to receptor PDBQT file
             scoring_method: Scoring method to use (None uses config default)
 
+        # Check if Vina/Smina is available; warn if not found
+        import shutil
+        if not shutil.which("vina") and not shutil.which("smina"):
+            logger.warning("Vina/Smina not found on PATH. Install with: "
+                          "conda install -c conda-forge autodock-vina. "
+                          "Falling back to physics-based scoring.")
+
+
         Returns:
             Path to CSV with docking results
         """
