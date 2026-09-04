@@ -26,9 +26,64 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 - `sigma_hole_docking_colab.ipynb` - Example Colab notebook demonstrating usage
 - `requirements_colab.txt` - Python package requirements for Colab
 - Example data files:
-  - `test_input.csv` - Example compound input data
-  - `receptor.pdbqt` - Example receptor (small acetone test receptor)
+  - `example_input.csv` - Example compound input data
+  - `receptor.pdbqt` - Small acetone test receptor (678 B, in examples/. For lysozyme receptor, use the download script: scripts/download_example_data.py)
   - Various ligand and structure files (.pdbqt, .sdf)
+
+## Installation
+
+
+
+To install the sigma-hole-docking package, run:
+
+
+
+```bash
+
+pip install sigma-hole-docking
+
+# or for development:
+
+pip install -e ".[dev]"
+
+```
+
+
+
+## Prerequisites
+
+
+
+For enhanced docking capabilities, you can install Vina or Smina. However, the pipeline includes physics-based scoring that works without any external tools. If neither Vina nor Smina is installed on your system, the pipeline will automatically fall back to physics-based scoring with a warning message.
+
+
+
+To install Vina, use:
+
+```bash
+
+conda install -c conda-forge autodock-vina
+
+```
+
+
+
+## Development
+
+
+
+For development, you can run:
+
+
+
+- `pytest` - Run tests
+
+- `ruff check` - Check for code style issues
+
+- `ruff format` - Format code according to style guidelines
+
+
+
 
 ## How to Use in Google Colab
 
@@ -47,7 +102,7 @@ The Sigma-Hole pipeline models directional halogen-bonding (σ-hole) interaction
 
 4. **Run the pipeline** as demonstrated in the example notebook:
    ```python
-   from sigma_hole_docking.pipeline import SigmaHolePipeline
+   from sigma_hole_docking import SigmaHolePipeline
    
    pipeline = SigmaHolePipeline()
    

@@ -39,7 +39,7 @@ This repository contains a modified version of the Sigma-Hole Molecular Docking 
 - `receptor.pdbqt` - Lysozyme receptor in PDBQT format
 - `2-iodopyridine_ligand.pdbqt` - Example ligand with dummy atom
 - Various SDF files for structure-based approach
-- `test_input.csv` - Alternative test input
+- `example_input.csv` - Alternative test input
 
 ### Documentation and Notebooks
 - `README.md` - This overview document
@@ -73,7 +73,7 @@ Simply run all cells in `sigma_hole_docking_colab.ipynb`
 
 #### Option B: Manual Execution
 ```python
-from sigma_hole_docking.pipeline import SigmaHolePipeline
+from sigma_hole_docking import SigmaHolePipeline
 
 # Initialize pipeline
 pipeline = SigmaHolePipeline()
@@ -215,7 +215,7 @@ Here's a complete example workflow for a virtual screening study:
 !pip install -r requirements_colab.txt
 
 # 2. Import pipeline
-from sigma_hole_docking.pipeline import SigmaHolePipeline
+from sigma_hole_docking import SigmaHolePipeline
 
 # 3. Initialize
 pipeline = SigmaHolePipeline()
