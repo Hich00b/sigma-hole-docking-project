@@ -1,6 +1,7 @@
 """Tests for the docking engine module."""
 
 import numpy as np
+
 from sigma_hole_docking.docking_engine import SigmaHoleDockingEngine
 
 

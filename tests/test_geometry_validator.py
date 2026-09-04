@@ -1,6 +1,7 @@
 """Tests for the geometry validator module."""
 
 from rdkit import Chem
+
 from sigma_hole_docking.geometry_validator import GeometryValidator
 
 
