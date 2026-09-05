@@ -30,3 +30,12 @@ def test_heuristic_fallback():
     parser = MultiwfnParser()
     # Test that heuristic fallback works
     assert hasattr(parser, "parse_vmax_output")
+
+
+def test_parse_vmax_output_file_not_found():
+    """Test parse_vmax_output with non-existent file."""
+    parser = MultiwfnParser()
+    
+    result = parser.parse_vmax_output("/non/existent/file.out")
+    assert result["success"] is False
+    assert result["vmax"] is None

@@ -313,9 +313,9 @@ class SigmaHoleDockingEngine:
             logger.info(
                 f"Aligning ligand: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms"
             )
-            ligand_atoms = self._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
+            ligand_atoms = alignment._align_molecules_for_sigma_hole(ligand_atoms, receptor_atoms)
             # Validate coordinates after alignment
-            if not self._validate_coordinates(ligand_atoms, "after alignment"):
+            if not pose_optimization._validate_coordinates(ligand_atoms, "after alignment"):
                 logger.error("ALIGNMENT FAILED: Invalid coordinates detected after alignment")
                 # Return NaN to indicate failure instead of proceeding with invalid coordinates
                 return (float("nan"), False)
@@ -324,9 +324,9 @@ class SigmaHoleDockingEngine:
             logger.info(
                 f"Local optimizing pose: {len(ligand_atoms)} ligand atoms, {len(receptor_atoms)} receptor atoms"
             )
-            ligand_atoms = self._local_optimize_pose(ligand_atoms, receptor_atoms)
+            ligand_atoms = pose_optimization._local_optimize_pose(ligand_atoms, receptor_atoms)
             # Validate coordinates after optimization
-            if not self._validate_coordinates(ligand_atoms, "after local optimization"):
+            if not pose_optimization._validate_coordinates(ligand_atoms, "after local optimization"):
                 logger.error(
                     "OPTIMIZATION FAILED: Invalid coordinates detected after local optimization"
                 )
@@ -392,7 +392,7 @@ class SigmaHoleDockingEngine:
                     halogen_atom = _a
                     break
             if halogen_atom is not None:
-                bonded_carbon = self._find_bonded_carbon(halogen_atom, ligand_atoms)
+                bonded_carbon = scoring._find_bonded_carbon(halogen_atom, ligand_atoms)
 
             # Diagnostic tracking for key distances
             min_distance = float("inf")
@@ -461,7 +461,7 @@ class SigmaHoleDockingEngine:
                         # from overlapping them. Use small LJ with sigma=1.2 A.
                         epsilon, sigma = 0.02, 1.2
                     else:
-                        epsilon, sigma = self._get_lj_parameters(
+                        epsilon, sigma = scoring._get_lj_parameters(
                             lig_atom["element"], rec_atom["element"]
                         )
 
@@ -489,19 +489,19 @@ class SigmaHoleDockingEngine:
 
                         if lig_atom is halogen_atom:
                             # Halogen-acceptor: suppress in sigma-hole direction
-                            angle = self._compute_cx_acceptor_angle(
+                            angle = scoring._compute_cx_acceptor_angle(
                                 halogen_atom, rec_atom, ligand_atoms
                             )
-                            charge_factor = self._halogen_acceptor_charge_scale(angle)
+                            charge_factor = scoring._halogen_acceptor_charge_scale(angle)
                         elif bonded_carbon is not None and lig_atom is bonded_carbon:
                             # Bonded carbon-acceptor: suppress in sigma-hole direction
-                            angle = self._compute_cx_acceptor_angle(
+                            angle = scoring._compute_cx_acceptor_angle(
                                 halogen_atom, rec_atom, ligand_atoms
                             )
-                            charge_factor = self._bonded_carbon_charge_scale(angle)
+                            charge_factor = scoring._bonded_carbon_charge_scale(angle)
                         elif is_lig_dummy:
                             # Dummy atom: only interact with electronegative acceptors
-                            charge_factor = self._dummy_acceptor_charge_scale(rec_atom["element"])
+                            charge_factor = scoring._dummy_acceptor_charge_scale(rec_atom["element"])
 
                         coulomb_energy = (
                             self.k_coulomb
