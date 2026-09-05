@@ -253,8 +253,3 @@ For detailed scientific background on the Sigma-Hole method and halogen bonding,
 - Politzer, P., et al. (2013). Halogen bonding: An interaction divided. *CrystEngComm*, 15(16), 3029-3039.
 - Cavallo, G., et al. (2016). The halogen bond. *Chemical Reviews*, 116(4), 2478-2601.
 - Kolář, M. H., et al. (2019). σ-Hole interaction parameters. *Journal of chemical theory and computation*, 15(5), 2972-2984.
-
-## Acknowledgments
-
-Based on the original Sigma-Hole Molecular Docking Pipeline by [Dr. Bensaada Hichem](https://dr-bensaada.pages.dev).
-Adapted for Google Colab by [Your Name/Organization].
