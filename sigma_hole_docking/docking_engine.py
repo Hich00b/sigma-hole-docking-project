@@ -326,7 +326,9 @@ class SigmaHoleDockingEngine:
             )
             ligand_atoms = pose_optimization._local_optimize_pose(ligand_atoms, receptor_atoms)
             # Validate coordinates after optimization
-            if not pose_optimization._validate_coordinates(ligand_atoms, "after local optimization"):
+            if not pose_optimization._validate_coordinates(
+                ligand_atoms, "after local optimization"
+            ):
                 logger.error(
                     "OPTIMIZATION FAILED: Invalid coordinates detected after local optimization"
                 )
@@ -501,7 +503,9 @@ class SigmaHoleDockingEngine:
                             charge_factor = scoring._bonded_carbon_charge_scale(angle)
                         elif is_lig_dummy:
                             # Dummy atom: only interact with electronegative acceptors
-                            charge_factor = scoring._dummy_acceptor_charge_scale(rec_atom["element"])
+                            charge_factor = scoring._dummy_acceptor_charge_scale(
+                                rec_atom["element"]
+                            )
 
                         coulomb_energy = (
                             self.k_coulomb

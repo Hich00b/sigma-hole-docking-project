@@ -95,14 +95,14 @@ def test_batch_dataframe():
 def test_batch_dataframe_custom_delta_r():
     """Test DataFrame input with custom delta_r column."""
     calculator = SigmaHoleChargeCalculator()
-    df = pd.DataFrame({
-        "halogen": ["I", "I"], 
-        "vmax": [20.0, 25.0],
-        "custom_delta": [1.0, 1.5]  # Custom delta_r values
-    })
-    result_df = calculator.batch_calculate_from_dataframe(
-        df, delta_r_col="custom_delta"
+    df = pd.DataFrame(
+        {
+            "halogen": ["I", "I"],
+            "vmax": [20.0, 25.0],
+            "custom_delta": [1.0, 1.5],  # Custom delta_r values
+        }
     )
+    result_df = calculator.batch_calculate_from_dataframe(df, delta_r_col="custom_delta")
     assert "dummy_charge" in result_df.columns
     assert len(result_df) == 2
     # Both should have calculated charges

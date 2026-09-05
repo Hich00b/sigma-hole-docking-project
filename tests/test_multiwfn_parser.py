@@ -35,7 +35,6 @@ def test_heuristic_fallback():
 def test_parse_vmax_output_file_not_found():
     """Test parse_vmax_output with non-existent file."""
     parser = MultiwfnParser()
-    
     result = parser.parse_vmax_output("/non/existent/file.out")
     assert result["success"] is False
     assert result["vmax"] is None
