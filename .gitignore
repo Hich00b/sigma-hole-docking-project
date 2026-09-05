@@ -93,6 +93,7 @@ sigma_hole_docking_plan.md
 *.mol2
 ligands/
 receptors/
+tests/
 
 # Development/debug files
 debug_*.py
@@ -115,4 +116,4 @@ temp/
 # Egg-info
 *.egg-info/
 
-# Memory directory for Claude Code
+
