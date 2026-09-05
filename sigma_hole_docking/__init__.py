@@ -2,7 +2,7 @@
 Sigma Hole Docking Package
 """
 
-from .pipeline import SigmaHolePipeline
 from .docking_engine import SigmaHoleDockingEngine
+from .pipeline import SigmaHolePipeline
 
-__all__ = ["SigmaHolePipeline", "SigmaHoleDockingEngine"]
+__all__ = ["SigmaHoleDockingEngine", "SigmaHolePipeline"]

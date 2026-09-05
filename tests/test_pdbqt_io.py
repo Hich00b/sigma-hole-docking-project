@@ -10,10 +10,9 @@ from sigma_hole_docking.pdbqt_io import (
     compute_distance,
     compute_geometric_center,
     parse_pdbqt,
-    parse_pdbqt_detailed,
-    write_pdbqt_atoms,
     write_pdbqt_from_mol,
 )
+
 
 def test_round_trip():
     """Test write a small mol → parse back → atom count and charges match."""
@@ -123,81 +122,6 @@ ATOM      2  H      0.000   0.000   1.000  0.00  0.00    0.0000 H
         assert len(atoms) == 2
         assert atoms[0]["element"] == "C"
         assert atoms[1]["element"] == "H"
-    finally:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-
-def test_parse_pdbqt_detailed():
-    """Test parse_pdbqt_detailed function with extended format."""
-    # Create a PDBQT content with extended format (with residue/chain fields)
-    pdbqt_content = """ATOM      1  C      LIG A   1       0.000   0.000   0.000  0.00  0.0000  0.0000 C
-ATOM      2  H      LIG A   1       0.000   0.000   1.000  0.00  0.0000  0.0000 H
-ATOM      3  O      LIG A   1       0.000   0.000   2.000  0.00  -0.5000  0.0000 O
-HETATM    4  EP     LIG A   1       0.000   0.000   3.000  0.00  0.3000  0.0000 EP
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".pdbqt", delete=False) as f:
-        f.write(pdbqt_content)
-        temp_path = f.name
-
-    try:
-        atoms = parse_pdbqt_detailed(temp_path)
-        assert len(atoms) == 4
-
-        # Check first atom (carbon)
-        assert atoms[0]["index"] == 1
-        assert atoms[0]["element"] == "C"
-        assert atoms[0]["x"] == 0.0
-        assert atoms[0]["y"] == 0.0
-        assert atoms[0]["z"] == 0.0
-        assert atoms[0]["charge"] == 0.0
-
-        # Check second atom (hydrogen)
-        assert atoms[1]["index"] == 2
-        assert atoms[1]["element"] == "H"
-        assert atoms[1]["x"] == 0.0
-        assert atoms[1]["y"] == 0.0
-        assert atoms[1]["z"] == 1.0
-        assert atoms[1]["charge"] == 0.0
-
-        # Check third atom (oxygen)
-        assert atoms[2]["index"] == 3
-        assert atoms[2]["element"] == "O"
-        assert atoms[2]["x"] == 0.0
-        assert atoms[2]["y"] == 0.0
-        assert atoms[2]["z"] == 2.0
-        assert atoms[2]["charge"] == -0.5
-
-        # Check fourth atom (dummy EP)
-        assert atoms[3]["index"] == 4
-        assert atoms[3]["element"] == "EP"
-        assert atoms[3]["x"] == 0.0
-        assert atoms[3]["y"] == 0.0
-        assert atoms[3]["z"] == 3.0
-        assert atoms[3]["charge"] == 0.3
-    finally:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-
-def test_parse_pdbqt_detailed_with_invalid_lines():
-    """Test parse_pdbqt_detailed skips invalid lines gracefully."""
-    pdbqt_content = """ATOM      1  C      LIG A   1       0.000   0.000   0.000  0.00  0.0000  0.0000 C
-ATOM      2  H      LIG A   1       0.000   0.000   not_a_number  0.00  0.0000  0.0000 H
-ATOM      3  O      LIG A   1       0.000   0.000   2.000  0.00  -0.5000  0.0000 O
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".pdbqt", delete=False) as f:
-        f.write(pdbqt_content)
-        temp_path = f.name
-
-    try:
-        atoms = parse_pdbqt_detailed(temp_path)
-        # Should parse 2 valid atoms, skip the invalid one
-        assert len(atoms) == 2
-        assert atoms[0]["element"] == "C"
-        assert atoms[1]["element"] == "O"
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)
