@@ -674,7 +674,9 @@ def example_usage():
 
     # Generate ligand WITH dummy atom (for sigma-hole modeling)
     output_file_sigma = "iodobenzene_sigma.pdbqt"
-    logger.info(f"Generating ligand PDBQT FOR SIGMA-HOLE: {smiles} with {halogen} dummy charge {charge}")
+    logger.info(
+        f"Generating ligand PDBQT FOR SIGMA-HOLE: {smiles} with {halogen} dummy charge {charge}"
+    )
     success_sigma = generator.prepare_ligand_from_smiles(
         smiles, halogen, charge, output_file_sigma, add_dummy=True
     )

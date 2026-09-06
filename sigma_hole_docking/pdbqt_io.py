@@ -162,7 +162,9 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
                                 "x": float(parts[6]),
                                 "y": float(parts[7]),
                                 "z": float(parts[8]),
-                                "charge": float(parts[11]),  # Charge is at index 11 in extended PDBQT format
+                                "charge": float(
+                                    parts[11]
+                                ),  # Charge is at index 11 in extended PDBQT format
                             }
                             atoms.append(atom_data)
                         except (ValueError, IndexError):
@@ -176,7 +178,9 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
                                 "x": float(parts[3]),
                                 "y": float(parts[4]),
                                 "z": float(parts[5]),
-                                "charge": float(parts[8]),  # Charge is at index 8 in compact PDBQT format
+                                "charge": float(
+                                    parts[8]
+                                ),  # Charge is at index 8 in compact PDBQT format
                             }
                             atoms.append(atom_data)
                         except (ValueError, IndexError):
