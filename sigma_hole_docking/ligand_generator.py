@@ -674,45 +674,45 @@ def example_usage():
 
     # Generate ligand WITH dummy atom (for sigma-hole modeling)
     output_file_sigma = "iodobenzene_sigma.pdbqt"
-    print(f"Generating ligand PDBQT FOR SIGMA-HOLE: {smiles} with {halogen} dummy charge {charge}")
+    logger.info(f"Generating ligand PDBQT FOR SIGMA-HOLE: {smiles} with {halogen} dummy charge {charge}")
     success_sigma = generator.prepare_ligand_from_smiles(
         smiles, halogen, charge, output_file_sigma, add_dummy=True
     )
 
     # Generate ligand WITHOUT dummy atom (for control experiments)
     output_file_control = "iodobenzene_control.pdbqt"
-    print(f"Generating ligand PDBQT FOR CONTROL: {smiles} (NO DUMMY ATOM)")
+    logger.info(f"Generating ligand PDBQT FOR CONTROL: {smiles} (NO DUMMY ATOM)")
     success_control = generator.prepare_ligand_from_smiles(
         smiles, halogen, charge, output_file_control, add_dummy=False
     )
 
     if success_sigma:
-        print(f"Successfully generated sigma-hole ligand: {output_file_sigma}")
+        logger.info(f"Successfully generated sigma-hole ligand: {output_file_sigma}")
         # Show first few lines of the generated file
         try:
             with open(output_file_sigma, "r") as f:
                 lines = f.readlines()
-            print("First 10 lines of sigma-hole PDBQT:")
+            logger.info("First 10 lines of sigma-hole PDBQT:")
             for line in lines[:10]:
-                print(line.rstrip())
+                logger.info(line.rstrip())
         except OSError as e:
-            print(f"Could not read generated file: {e}")
+            logger.error(f"Could not read generated file: {e}")
     else:
-        print("Failed to generate sigma-hole ligand PDBQT")
+        logger.error("Failed to generate sigma-hole ligand PDBQT")
 
     if success_control:
-        print(f"Successfully generated control ligand: {output_file_control}")
+        logger.info(f"Successfully generated control ligand: {output_file_control}")
         # Show first few lines of the generated file
         try:
             with open(output_file_control, "r") as f:
                 lines = f.readlines()
-            print("First 10 lines of control PDBQT:")
+            logger.info("First 10 lines of control PDBQT:")
             for line in lines[:10]:
-                print(line.rstrip())
+                logger.info(line.rstrip())
         except OSError as e:
-            print(f"Could not read generated file: {e}")
+            logger.error(f"Could not read generated file: {e}")
     else:
-        print("Failed to generate control ligand PDBQT")
+        logger.error("Failed to generate control ligand PDBQT")
 
     return success_sigma and success_control
 

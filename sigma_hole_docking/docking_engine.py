@@ -999,10 +999,11 @@ class SigmaHoleDockingEngine:
         # Handle physics-based scoring directly
         if scoring == "physics":
             logger.info("Using physics-based scoring")
-            physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
+            physics_energy, steric_clash = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
             results["success"] = True
             results["best_affinity"] = physics_energy
             results["all_affinities"] = [physics_energy]
+            results["steric_clash"] = steric_clash
             results["method"] = "physics"
             return results
 
@@ -1068,10 +1069,11 @@ class SigmaHoleDockingEngine:
             # If both fail, use physics-based as last resort
             if self.use_physics_fallback:
                 logger.warning("Both Vina and Smina failed, using physics-based scoring")
-                physics_energy, _ = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
+                physics_energy, steric_clash = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
 
                 results["success"] = True
                 results["best_affinity"] = physics_energy
+                results["steric_clash"] = steric_clash
                 results["all_affinities"] = [physics_energy]
                 results["method"] = "physics_fallback"
                 return results
@@ -1188,7 +1190,7 @@ class SigmaHoleDockingEngine:
 
                 if docking_results["success"]:
                     affinity = docking_results["best_affinity"]
-                    steric_clash = False  # No steric clash info from Vina/Smina yet
+                    steric_clash = docking_results.get("steric_clash", False)
                     if steric_clash:
                         logger.warning(f"STERIC CLASH detected for {ligand_name} during docking")
                 else:

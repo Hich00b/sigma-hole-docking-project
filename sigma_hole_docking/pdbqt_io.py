@@ -149,8 +149,12 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
             for line in f:
                 line = line.strip()
                 if line.startswith(("ATOM", "HETATM")):
+                    # PDBQT format:
+                    # ATOM      1  I   LIG B   1       0.000   0.000   0.000  0.00  0.00    -0.100 I
                     parts = line.split()
-                    if len(parts) >= 10:
+                    # Handle both extended format (with residue fields) and compact format (test format)
+                    if len(parts) >= 12:
+                        # Extended format: ATOM index element resName chainID resSeq x y z occ charge atomType
                         try:
                             atom_data = {
                                 "index": int(parts[1]),
@@ -158,7 +162,21 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
                                 "x": float(parts[6]),
                                 "y": float(parts[7]),
                                 "z": float(parts[8]),
-                                "charge": float(parts[10]) if len(parts) > 10 else 0.0,
+                                "charge": float(parts[11]),  # Charge is at index 11 in extended PDBQT format
+                            }
+                            atoms.append(atom_data)
+                        except (ValueError, IndexError):
+                            continue
+                    elif len(parts) >= 10:
+                        # Compact format: ATOM index element x y z occ charge atomType (used in tests)
+                        try:
+                            atom_data = {
+                                "index": int(parts[1]),
+                                "element": parts[2],
+                                "x": float(parts[3]),
+                                "y": float(parts[4]),
+                                "z": float(parts[5]),
+                                "charge": float(parts[8]),  # Charge is at index 8 in compact PDBQT format
                             }
                             atoms.append(atom_data)
                         except (ValueError, IndexError):
