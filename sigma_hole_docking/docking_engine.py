@@ -1003,7 +1003,9 @@ class SigmaHoleDockingEngine:
         # Handle physics-based scoring directly
         if scoring == "physics":
             logger.info("Using physics-based scoring")
-            physics_energy, steric_clash = self.calculate_physics_score(ligand_pdbqt, receptor_pdbqt)
+            physics_energy, steric_clash = self.calculate_physics_score(
+    ligand_pdbqt, receptor_pdbqt
+)
             results["success"] = True
             results["best_affinity"] = physics_energy
             results["all_affinities"] = [physics_energy]
