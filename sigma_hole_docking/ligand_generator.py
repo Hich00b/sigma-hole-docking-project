@@ -406,14 +406,12 @@ class SigmaHoleLigandGenerator:
             structure_format: File format — 'pdb', 'sdf', 'mol2', or 'auto' (detect from extension)
 
         Returns:
-            True if successful, False otherwise
         """
-        print("=" * 60)
-        print("!!! CONFIRMED: YOUR UPDATED LIGAND GENERATOR IS RUNNING !!!")
-        print(f"!!! structure_path: {structure_path}")
-        print(f"!!! halogen: {halogen}, charge: {charge}, add_dummy: {add_dummy}")
-        print("=" * 60 + "\n")
-
+        logger.debug("=" * 60)
+        logger.debug("!!! CONFIRMED: YOUR UPDATED LIGAND GENERATOR IS RUNNING !!!")
+        logger.debug(f"!!! structure_path: {structure_path}")
+        logger.debug(f"!!! halogen: {halogen}, charge: {charge}, add_dummy: {add_dummy}")
+        logger.debug("=" * 60)
         try:
             # Auto-detect format from extension
             if structure_format == "auto":
@@ -611,7 +609,7 @@ class SigmaHoleLigandGenerator:
     ) -> list[str]:
         """
         Generate PDBQT files for a batch of ligands from DFT structure files (PDB/SDF/MOL2).
-        Preserves input geometry — no optimization.
+        Preserves input geometry - no optimization.
 
         Args:
             ligands_df: DataFrame with ligand information

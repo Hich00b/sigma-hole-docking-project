@@ -146,28 +146,79 @@ def parse_pdbqt_detailed(pdbqt_path: str) -> list[dict]:
 
     try:
         with open(pdbqt_path, "r") as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if line.startswith(("ATOM", "HETATM")):
+                    # PDBQT format:
+                    # ATOM      1  I   LIG B   1       0.000   0.000   0.000  0.00  0.00    -0.100 I
                     parts = line.split()
-                    if len(parts) >= 10:
+                    # Handle both extended format (with residue fields) and compact format (test format)
+                    if len(parts) >= 12:
+                        # Extended format: ATOM index element resName chainID resSeq x y z occ charge atomType
                         try:
-                            atom_data = {
-                                "index": int(parts[1]),
-                                "element": parts[2],
-                                "x": float(parts[6]),
-                                "y": float(parts[7]),
-                                "z": float(parts[8]),
-                                "charge": float(parts[10]) if len(parts) > 10 else 0.0,
-                            }
-                            atoms.append(atom_data)
+                            atom_index = int(parts[1])
+                            element = parts[2]  # Element symbol is at index 2 (3rd field)
+                            atom_type = (
+                                parts[12] if len(parts) > 12 else element
+                            )  # Atom type is at index 12 (13th field) if present
+
+                            # Normalize halogen element names (handle cases like "CL" -> "Cl")
+                            if element.upper() == "CL":
+                                element = "Cl"
+                            elif element.upper() == "BR":
+                                element = "Br"
+                            elif element.upper() == "I":
+                                element = "I"  # Already correct, but explicit for clarity
+                            # Note: Hydrogen "H" doesn't need normalization
+
+                            x = float(parts[6])
+                            y = float(parts[7])
+                            z = float(parts[8])
+                            charge = float(
+                                parts[11]
+                            )  # Charge is at index 11 in extended PDBQT format
                         except (ValueError, IndexError):
                             continue
+                    elif len(parts) >= 10:
+                        # Compact format: ATOM index element x y z occ charge atomType (used in tests)
+                        try:
+                            atom_index = int(parts[1])
+                            element = parts[2]  # Element symbol is at index 2 (3rd field)
+                            atom_type = (
+                                parts[9] if len(parts) > 9 else element
+                            )  # Atom type is at index 9 (10th field) if present
+
+                            # Normalize halogen element names (handle cases like "CL" -> "Cl")
+                            if element.upper() == "CL":
+                                element = "Cl"
+                            elif element.upper() == "BR":
+                                element = "Br"
+                            elif element.upper() == "I":
+                                element = "I"  # Already correct, but explicit for clarity
+                            # Note: Hydrogen "H" doesn't need normalization
+
+                            x = float(parts[3])
+                            y = float(parts[4])
+                            z = float(parts[5])
+                            charge = float(parts[8])  # Charge is at index 8 in compact PDBQT format
+                        except (ValueError, IndexError):
+                            continue
+                    else:
+                        continue
+
+                    atom_data = {
+                        "index": atom_index,
+                        "element": element,
+                        "x": x,
+                        "y": y,
+                        "z": z,
+                        "charge": charge,
+                    }
+                    atoms.append(atom_data)
     except OSError as e:
         logger.error(f"Error parsing PDBQT {pdbqt_path}: {e}")
 
     return atoms
-
 
 def write_pdbqt_atoms(
     atoms: list[dict],
