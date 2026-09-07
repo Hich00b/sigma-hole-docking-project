@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List
 
 import pandas as pd
 
@@ -69,10 +68,7 @@ def _parse_pdbqt_for_visualization(pdbqt_path: str) -> tuple[list[dict], str]:
                         except (ValueError, IndexError) as e:
                             logger.debug(f"Could not parse PDBQT line: {line.strip()}. Error: {e}")
                             continue
-    except FileNotFoundError:
-        logger.error(f"PDBQT file not found: {pdbqt_path}")
-        return [], ""
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Error reading PDBQT file {pdbqt_path}: {e}")
         return [], ""
 
@@ -104,7 +100,7 @@ def create_visualizer_for_top_hits(
     ligand_dir: str,
     output_dir: str = "visualizations",
     num_visualizations: int = 5,
-) -> List[str]:
+) -> list[str]:
     """
     Create 3D visualizations for top hits showing receptor-ligand interactions.
 
