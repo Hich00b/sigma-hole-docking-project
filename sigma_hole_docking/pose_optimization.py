@@ -10,6 +10,7 @@ import copy
 import logging
 
 import numpy as np
+from . import alignment, scoring
 
 logger = logging.getLogger(__name__)
 
@@ -61,13 +62,13 @@ def _local_optimize_pose(ligand_atoms: list[dict], receptor_atoms: list[dict]) -
     # Note: _calculate_pairwise_energy would need to be imported from scoring module
     # For now, we'll assume it's available or pass it as a parameter
     # best_energy = _calculate_pairwise_energy(best_atoms, receptor_atoms)
-    best_energy = float("inf")  # Placeholder - will be updated when imported
+    best_energy = scoring._calculate_pairwise_energy(best_atoms, receptor_atoms)
 
     # Find key atoms for defining the optimization axes - handle multiple halogens
     # Note: _find_halogen_and_carbon would need to be imported from alignment module
     # Note: _find_acceptor_atoms would need to be imported from alignment module
-    halogen_carbon_pairs = []  # Placeholder
-    acceptor_oxygens = []  # Placeholder
+    halogen_carbon_pairs = alignment._find_halogen_and_carbon(ligand_atoms)
+    acceptor_oxygens = alignment._find_acceptor_atoms(receptor_atoms)
 
     if not acceptor_oxygens:
         # Can't optimize without acceptor atoms
@@ -328,7 +329,7 @@ def _local_optimize_pose(ligand_atoms: list[dict], receptor_atoms: list[dict]) -
 
                             # Calculate energy for this pose
                             # Note: _calculate_pairwise_energy would need to be imported from scoring module
-                            energy = 0.0  # Placeholder - will be updated when imported
+                            energy = scoring._calculate_pairwise_energy(test_atoms, receptor_atoms)
 
                             # Update best if this is better (more negative)
                             if energy < best_energy:
