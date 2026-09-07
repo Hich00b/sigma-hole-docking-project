@@ -10,6 +10,7 @@ import copy
 import logging
 
 import numpy as np
+
 from . import alignment, scoring
 
 logger = logging.getLogger(__name__)
