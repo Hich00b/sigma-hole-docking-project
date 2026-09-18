@@ -272,12 +272,42 @@ class SigmaHoleDockingEngine:
             receptor_pdbqt: Path to receptor PDBQT file
             cutoff_distance: Maximum distance for interactions (Å)
             output_path: Optional path to save the docked ligand pose PDBQT file
+        """
+        Calculate interaction energy using physics-based scoring (LJ + Coulomb).
+
+        This method reliably reads dummy atom charges and positions.
+        Molecules are separated along their center-of-mass vector to avoid
+        excessive overlap that would lead to unrealistic repulsive energies.
+        For sigma-hole interactions, aligns molecules for optimal geometry.
+
+        Args:
+            ligand_pdbqt: Path to ligand PDBQT file
+            receptor_pdbqt: Path to receptor PDBQT file
+            cutoff_distance: Maximum distance for interactions (Å)
+            output_path: Optional path to save the docked ligand pose PDBQT file
 
         Returns:
             Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
         """
+        Molecules are separated along their center-of-mass vector to avoid
         excessive overlap that would lead to unrealistic repulsive energies.
         For sigma-hole interactions, aligns molecules for optimal geometry.
+
+        Args:
+            ligand_pdbqt: Path to ligand PDBQT file
+            receptor_pdbqt: Path to receptor PDBQT file
+            cutoff_distance: Maximum distance for interactions (Å)
+            output_path: Optional path to save the docked ligand pose PDBQT file
+
+        Returns:
+            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
+        """
+            cutoff_distance: Maximum distance for interactions (Å)
+            output_path: Optional path to save the docked ligand pose PDBQT file
+
+        Returns:
+            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
+        """
 
         Args:
             ligand_pdbqt: Path to ligand PDBQT file
@@ -664,7 +694,7 @@ class SigmaHoleDockingEngine:
             return (total_energy, True)  # (energy, success)
         except Exception:
             logger.exception("Error in physics-based scoring")
-            return (float("nan"), False)
+            return (float("nan"), False, None)
 
     def run_vina_docking(
         self,
@@ -1108,7 +1138,6 @@ class SigmaHoleDockingEngine:
                 results["steric_clash"] = steric_clash
                 results["all_affinities"] = [physics_energy]
                 results["method"] = "physics_fallback"
-                results["docked_pose_path"] = docked_pose_path
                 return results
 
             # Everything failed
@@ -1339,6 +1368,10 @@ def example_usage():
                 print(f"Method used: {results['method']}")
         else:
             print(f"Docking failed: {results['error']}")
+    else:
+        print("Skipping docking - files not found")
+
+    return engine
     else:
         print("Skipping docking - files not found")
 

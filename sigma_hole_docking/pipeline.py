@@ -642,7 +642,34 @@ class SigmaHolePipeline:
                                 try:
                                     os.symlink(docked_pose_path, symlink_path)
                                 except FileExistsError:
-                                                os.remove(symlink_path)
+                                    os.remove(symlink_path)
+                                    os.symlink(docked_pose_path, symlink_path)
+                            else:
+                                # Fallback to original ligand file if docked pose not available
+                                ligand_file = os.path.join(self.config["ligand_dir"], f"{compound_id}_ligand.pdbqt")
+                                if os.path.exists(ligand_file):
+                                    symlink_path = os.path.join(temp_dir, f"{compound_id}_ligand.pdbqt")
+                                    try:
+                                        os.remove(symlink_path)
+                                    except FileNotFoundError:
+                                        pass
+                                    os.symlink(ligand_file, symlink_path)
+                        # Generate interaction visualizations using the temporary directory with symlinks
+                        viz_files = self.results_analyzer.generate_interaction_visualizations(
+                            receptor_pdbqt=receptor_pdbqt,
+                            ligand_dir=temp_dir,
+                            output_dir=viz_output_dir,
+                            num_visualizations=5,  # Visualize top 5 hits
+                        )
+
+                    if viz_files:
+                        logger.info(
+                            f"Generated {len(viz_files)} interaction visualizations in {viz_output_dir}"
+                        )
+                    else:
+                        logger.warning("No interaction visualizations were generated")
+                except Exception as e:
+                    logger.error(f"Failed to generate interaction visualizations: {e}")
                                     os.symlink(docked_pose_path, symlink_path)
                             else:
                                 # Fallback to original ligand file if docked pose not available
