@@ -257,25 +257,13 @@ class SigmaHoleDockingEngine:
         return scoring._calculate_pairwise_energy(ligand_atoms, receptor_atoms)
 
     def calculate_physics_score(
-        self, ligand_pdbqt: str, receptor_pdbqt: str, cutoff_distance: float = 6.0, output_path: str | None = None
-    ) -> tuple[float, bool, str | None]:
+        self, ligand_pdbqt: str, receptor_pdbqt: str, cutoff_distance: float = 6.0
+    ) -> tuple[float, bool]:
         """
         Calculate interaction energy using physics-based scoring (LJ + Coulomb).
 
         This method reliably reads dummy atom charges and positions.
         Molecules are separated along their center-of-mass vector to avoid
-        excessive overlap that would lead to unrealistic repulsive energies.
-        For sigma-hole interactions, aligns molecules for optimal geometry.
-
-        Args:
-            ligand_pdbqt: Path to ligand PDBQT file
-            receptor_pdbqt: Path to receptor PDBQT file
-            cutoff_distance: Maximum distance for interactions (Å)
-            output_path: Optional path to save the docked ligand pose PDBQT file
-
-        Returns:
-            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
-        """
         excessive overlap that would lead to unrealistic repulsive energies.
         For sigma-hole interactions, aligns molecules for optimal geometry.
 
@@ -645,22 +633,6 @@ class SigmaHoleDockingEngine:
                 f"[FINAL] total={total_energy:.4f} lj={total_lj:.4f} coul={total_coulomb:.4f} pairs={pairs_count}",
                 file=sys.stderr,
             )
-            # Save docked pose if output path is provided
-            docked_pose_path = None
-            if output_path is not None and ligand_atoms is not None:
-                # Convert ligand_atoms to the format expected by write_pdbqt_atoms
-                # We need to add is_dummy flag if not present
-                atoms_for_writing = []
-                for atom in ligand_atoms:
-                    atom_copy = atom.copy()
-                    if "is_dummy" not in atom_copy:
-                        atom_copy["is_dummy"] = atom.get("charge", 0.0) > 0.01
-                    atoms_for_writing.append(atom_copy)
-                
-                if self.write_pdbqt_atoms(atoms_for_writing, output_path, is_docking=True):
-                    docked_pose_path = output_path
-                else:
-                    logger.error(f"Failed to save docked pose to {output_path}")
             return (total_energy, True)  # (energy, success)
         except Exception:
             logger.exception("Error in physics-based scoring")
@@ -1108,7 +1080,6 @@ class SigmaHoleDockingEngine:
                 results["steric_clash"] = steric_clash
                 results["all_affinities"] = [physics_energy]
                 results["method"] = "physics_fallback"
-                results["docked_pose_path"] = docked_pose_path
                 return results
 
             # Everything failed
