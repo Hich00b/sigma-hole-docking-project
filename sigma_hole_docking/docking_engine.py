@@ -289,6 +289,17 @@ class SigmaHoleDockingEngine:
         Returns:
             Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
         """
+        For sigma-hole interactions, aligns molecules for optimal geometry.
+
+        Args:
+            ligand_pdbqt: Path to ligand PDBQT file
+            receptor_pdbqt: Path to receptor PDBQT file
+            cutoff_distance: Maximum distance for interactions (Å)
+            output_path: Optional path to save the docked ligand pose PDBQT file
+
+        Returns:
+            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
+        """
         Molecules are separated along their center-of-mass vector to avoid
         excessive overlap that would lead to unrealistic repulsive energies.
         For sigma-hole interactions, aligns molecules for optimal geometry.
@@ -1301,36 +1312,6 @@ class SigmaHoleDockingEngine:
                     )
 
                 if np.isfinite(affinity):
-                    logger.debug(f"Scored {ligand_name}: {affinity:.4f} kcal/mol")
-                else:
-                    logger.debug(f"Scored {ligand_name}: {affinity} (non-finite)")
-
-            except (
-                OSError,
-                ValueError,
-                RuntimeError,
-            ) as e:  # Catch-all to ensure batch processing continues despite individual ligand failures
-                logger.error("Error scoring %s: %s", ligand_name, e)
-                # Instead of returning 0.0 silently, return NaN to make the error visible
-                results.append(
-                    {
-                        "compound_id": ligand_name,
-                        "ligand_file": ligand_file,
-                        "binding_energy_kcalmol": float("nan"),
-                        "scoring_method": method,
-                        "error": str(e),
-                        "steric_clash": False,
-                    }
-                )
-
-        # Create DataFrame and save
-        df_results = pd.DataFrame(results)
-        df_results.to_csv(output_csv, index=False)
-        logger.info(f"Saved scoring results to {output_csv}")
-
-        return df_results
-
-
 def example_usage():
     """Example usage of the docking engine."""
     engine = SigmaHoleDockingEngine()
@@ -1368,10 +1349,6 @@ def example_usage():
                 print(f"Method used: {results['method']}")
         else:
             print(f"Docking failed: {results['error']}")
-    else:
-        print("Skipping docking - files not found")
-
-    return engine
     else:
         print("Skipping docking - files not found")
 
