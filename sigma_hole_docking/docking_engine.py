@@ -257,7 +257,11 @@ class SigmaHoleDockingEngine:
         return scoring._calculate_pairwise_energy(ligand_atoms, receptor_atoms)
 
     def calculate_physics_score(
-        self, ligand_pdbqt: str, receptor_pdbqt: str, cutoff_distance: float = 6.0, output_path: str | None = None
+        self,
+        ligand_pdbqt: str,
+        receptor_pdbqt: str,
+        cutoff_distance: float = 6.0,
+        output_path: str | None = None,
     ) -> tuple[float, bool, str | None]:
         """
         Calculate interaction energy using physics-based scoring (LJ + Coulomb).
@@ -272,61 +276,6 @@ class SigmaHoleDockingEngine:
             receptor_pdbqt: Path to receptor PDBQT file
             cutoff_distance: Maximum distance for interactions (Å)
             output_path: Optional path to save the docked ligand pose PDBQT file
-        """
-        Calculate interaction energy using physics-based scoring (LJ + Coulomb).
-
-        This method reliably reads dummy atom charges and positions.
-        Molecules are separated along their center-of-mass vector to avoid
-        excessive overlap that would lead to unrealistic repulsive energies.
-        For sigma-hole interactions, aligns molecules for optimal geometry.
-
-        Args:
-            ligand_pdbqt: Path to ligand PDBQT file
-            receptor_pdbqt: Path to receptor PDBQT file
-            cutoff_distance: Maximum distance for interactions (Å)
-            output_path: Optional path to save the docked ligand pose PDBQT file
-
-        Returns:
-            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
-        """
-        For sigma-hole interactions, aligns molecules for optimal geometry.
-
-        Args:
-            ligand_pdbqt: Path to ligand PDBQT file
-            receptor_pdbqt: Path to receptor PDBQT file
-            cutoff_distance: Maximum distance for interactions (Å)
-            output_path: Optional path to save the docked ligand pose PDBQT file
-
-        Returns:
-            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
-        """
-        Molecules are separated along their center-of-mass vector to avoid
-        excessive overlap that would lead to unrealistic repulsive energies.
-        For sigma-hole interactions, aligns molecules for optimal geometry.
-
-        Args:
-            ligand_pdbqt: Path to ligand PDBQT file
-            receptor_pdbqt: Path to receptor PDBQT file
-            cutoff_distance: Maximum distance for interactions (Å)
-            output_path: Optional path to save the docked ligand pose PDBQT file
-
-        Returns:
-            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
-        """
-            cutoff_distance: Maximum distance for interactions (Å)
-            output_path: Optional path to save the docked ligand pose PDBQT file
-
-        Returns:
-            Tuple of (interaction energy in kcal/mol, steric_clash boolean, docked_pose_path or None)
-        """
-
-        Args:
-            ligand_pdbqt: Path to ligand PDBQT file
-            receptor_pdbqt: Path to receptor PDBQT file
-            cutoff_distance: Maximum distance for interactions (Å)
-
-        Returns:
-            Interaction energy in kcal/mol (negative = favorable)
         """
         try:
             # Parse PDBQT files to get atoms, positions, and charges
@@ -687,7 +636,6 @@ class SigmaHoleDockingEngine:
                 file=sys.stderr,
             )
             # Save docked pose if output path is provided
-            docked_pose_path = None
             if output_path is not None and ligand_atoms is not None:
                 # Convert ligand_atoms to the format expected by write_pdbqt_atoms
                 # We need to add is_dummy flag if not present
@@ -697,9 +645,9 @@ class SigmaHoleDockingEngine:
                     if "is_dummy" not in atom_copy:
                         atom_copy["is_dummy"] = atom.get("charge", 0.0) > 0.01
                     atoms_for_writing.append(atom_copy)
-                
+
                 if self.write_pdbqt_atoms(atoms_for_writing, output_path, is_docking=True):
-                    docked_pose_path = output_path
+                    pass
                 else:
                     logger.error(f"Failed to save docked pose to {output_path}")
             return (total_energy, True)  # (energy, success)
@@ -1310,8 +1258,24 @@ class SigmaHoleDockingEngine:
                     logger.warning(
                         f"Result for {ligand_name} marked as STERIC CLASH in final output"
                     )
+            except Exception as e:
+                logger.warning(f"Error scoring {ligand_name}: {e}")
+                results.append(
+                    {
+                        "compound_id": ligand_name,
+                        "ligand_file": ligand_file,
+                        "binding_energy_kcalmol": float("nan"),
+                        "scoring_method": method,
+                        "steric_clash": False,
+                    }
+                )
 
-                if np.isfinite(affinity):
+        df = pd.DataFrame(results)
+        if output_csv:
+            df.to_csv(output_csv, index=False)
+        return df
+
+
 def example_usage():
     """Example usage of the docking engine."""
     engine = SigmaHoleDockingEngine()
