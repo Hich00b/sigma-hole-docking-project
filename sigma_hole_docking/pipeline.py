@@ -671,7 +671,7 @@ class SigmaHolePipeline:
                         )
                     else:
                         logger.warning("No interaction visualizations were generated")
-                except Exception as e:
+                except (OSError, ValueError, RuntimeError) as e:
                     logger.error(f"Failed to generate interaction visualizations: {e}")
 
             pipeline_results = {

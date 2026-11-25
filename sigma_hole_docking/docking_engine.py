@@ -1258,7 +1258,7 @@ class SigmaHoleDockingEngine:
                     logger.warning(
                         f"Result for {ligand_name} marked as STERIC CLASH in final output"
                     )
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError) as e:
                 logger.warning(f"Error scoring {ligand_name}: {e}")
                 results.append(
                     {
